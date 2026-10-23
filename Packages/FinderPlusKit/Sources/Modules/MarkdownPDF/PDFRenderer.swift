@@ -16,7 +16,7 @@ final class PDFRenderer: NSObject, WKNavigationDelegate {
     private var printContinuation: CheckedContinuation<Bool, Never>?
     private var window: NSWindow?
 
-    static func pageSize(named name: String) -> NSSize {
+    nonisolated static func pageSize(named name: String) -> NSSize {
         switch name {
         case "letter": return NSSize(width: 612, height: 792)
         case "legal": return NSSize(width: 612, height: 1008)
