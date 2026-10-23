@@ -1,0 +1,7 @@
+// Copy to Config/Local.xcconfig (ignored by git) and fill in.
+// Your Apple Developer Team ID (a free "Personal Team" works for local development).
+// Find it in Xcode › Settings › Accounts, or in https://developer.apple.com/account › Membership.
+DEVELOPMENT_TEAM = ABCDE12345
+
+// Optional: use your own bundle identifier prefix.
+// FP_BUNDLE_ID_PREFIX = com.example.FinderPlus

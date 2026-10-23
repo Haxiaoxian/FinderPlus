@@ -1,0 +1,26 @@
+// Shared build settings for the FinderPlus app and its Finder extension.
+
+MACOSX_DEPLOYMENT_TARGET = 14.0
+SWIFT_VERSION = 5.0
+MARKETING_VERSION = 0.1.0
+CURRENT_PROJECT_VERSION = 1
+
+// Bundle identifiers: the app is $(FP_BUNDLE_ID_PREFIX), the extension $(FP_BUNDLE_ID_PREFIX).FinderSync.
+FP_BUNDLE_ID_PREFIX = io.github.finderplus.FinderPlus
+
+// macOS App Group identifiers must start with the Team ID. The app and the Finder extension use it
+// to share the menu snapshot and the request inbox.
+FP_APP_GROUP = $(DEVELOPMENT_TEAM).io.github.finderplus
+
+// Shown in General › About when set (e.g. your fork's GitHub URL).
+FP_PROJECT_URL =
+
+CODE_SIGN_STYLE = Automatic
+DEVELOPMENT_TEAM =
+ENABLE_HARDENED_RUNTIME = YES
+DEAD_CODE_STRIPPING = YES
+
+#include "Architecture.xcconfig"
+
+// Personal values (DEVELOPMENT_TEAM, bundle prefix). Copy Local.xcconfig.example to Local.xcconfig.
+#include? "Local.xcconfig"

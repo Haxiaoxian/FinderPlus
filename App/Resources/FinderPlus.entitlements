@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The host is not sandboxed: it runs user-chosen tools (Python, Rscript, MarkItDown),
+	     sets folder icons and edits Finder data on explicit user request. It ships with the
+	     Hardened Runtime and is distributed outside the Mac App Store. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>$(FP_APP_GROUP)</string>
+	</array>
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+</dict>
+</plist>

@@ -1,0 +1,7 @@
+// Target architectures.
+//
+// Phase 1 (current): Apple Silicon only.
+// Phase 2 (Intel):   set FP_ARCHS = arm64 x86_64 here, or build with `make universal`
+//                    (passes ARCHS="arm64 x86_64" on the command line) to produce a Universal app.
+FP_ARCHS = arm64
+ARCHS = $(FP_ARCHS)

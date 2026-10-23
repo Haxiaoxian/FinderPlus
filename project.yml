@@ -1,0 +1,77 @@
+# XcodeGen spec — run `make generate` (or `xcodegen generate`) to create FinderPlus.xcodeproj.
+name: FinderPlus
+options:
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+  groupSortPosition: top
+configFiles:
+  Debug: Config/Debug.xcconfig
+  Release: Config/Release.xcconfig
+packages:
+  FinderPlusKit:
+    path: Packages/FinderPlusKit
+targets:
+  FinderPlus:
+    type: application
+    platform: macOS
+    sources:
+      - path: App/Sources
+      - path: App/Resources
+        excludes:
+          - "*.entitlements"
+          - Info.plist
+    dependencies:
+      - package: FinderPlusKit
+        product: FinderPlusCore
+      - package: FinderPlusKit
+        product: FinderPlusEngine
+      - package: FinderPlusKit
+        product: FinderPlusUI
+      - package: FinderPlusKit
+        product: FinderPlusBuiltinModules
+      - target: FinderPlusFinderSync
+        embed: true
+        codeSign: true
+      - sdk: FinderSync.framework
+    settings:
+      base:
+        PRODUCT_NAME: FinderPlus
+        PRODUCT_BUNDLE_IDENTIFIER: $(FP_BUNDLE_ID_PREFIX)
+        INFOPLIST_FILE: App/Resources/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: App/Resources/FinderPlus.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        COMBINE_HIDPI_IMAGES: YES
+  FinderPlusFinderSync:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: FinderSyncExtension
+        excludes:
+          - "*.entitlements"
+          - Info.plist
+    dependencies:
+      - package: FinderPlusKit
+        product: FinderPlusCore
+      - sdk: FinderSync.framework
+    settings:
+      base:
+        PRODUCT_NAME: FinderPlusFinderSync
+        PRODUCT_BUNDLE_IDENTIFIER: $(FP_BUNDLE_ID_PREFIX).FinderSync
+        INFOPLIST_FILE: FinderSyncExtension/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: FinderSyncExtension/FinderSyncExtension.entitlements
+        SKIP_INSTALL: YES
+schemes:
+  FinderPlus:
+    build:
+      targets:
+        FinderPlus: all
+        FinderPlusFinderSync: all
+    run:
+      config: Debug
+    archive:
+      config: Release

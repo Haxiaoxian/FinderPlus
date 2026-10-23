@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "id": "io.github.finderplus.examples.word-count",
+  "name": { "en": "Word Count", "zh-Hans": "字数统计", "ko": "단어 수" },
+  "summary": {
+    "en": "Count characters, words and lines of text and Markdown files (CJK aware).",
+    "zh-Hans": "统计文本与 Markdown 文件的字符、词数和行数（支持中日韩文字）。",
+    "ko": "텍스트 및 Markdown 파일의 문자, 단어, 줄 수를 셉니다(CJK 지원)."
+  },
+  "version": "1.0.0",
+  "author": "FinderPlus examples",
+  "icon": "textformat.123",
+  "category": "utility",
+  "permissions": ["readSelection", "runProcesses"],
+  "actions": [{
+    "id": "count",
+    "title": { "en": "Count Words", "zh-Hans": "统计字数", "ko": "단어 수 세기" },
+    "icon": "textformat.123",
+    "group": "other",
+    "rule": { "contexts": ["items"], "extensions": ["txt", "md", "markdown", "py", "r", "csv"] },
+    "run": { "interpreter": "python3", "script": "scripts/count.py", "arguments": ["{files}"], "output": "notification", "timeout": 120 }
+  }]
+}

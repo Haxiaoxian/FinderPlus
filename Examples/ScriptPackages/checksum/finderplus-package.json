@@ -1,0 +1,45 @@
+{
+  "formatVersion": 1,
+  "id": "io.github.finderplus.examples.checksum",
+  "name": { "en": "Checksums", "zh-Hans": "文件校验和", "ko": "체크섬" },
+  "summary": {
+    "en": "Copy SHA-256 or MD5 checksums of the selected files.",
+    "zh-Hans": "复制所选文件的 SHA-256 或 MD5 校验和。",
+    "ko": "선택한 파일의 SHA-256 또는 MD5 체크섬을 복사합니다."
+  },
+  "version": "1.0.0",
+  "author": "FinderPlus examples",
+  "icon": "number.square",
+  "category": "utility",
+  "permissions": ["readSelection", "runProcesses"],
+  "settings": {
+    "sections": [{
+      "id": "format",
+      "title": { "en": "Format", "zh-Hans": "格式", "ko": "형식" },
+      "fields": [{
+        "key": "nameOnly",
+        "title": { "en": "Show file names instead of full paths", "zh-Hans": "只显示文件名而非完整路径", "ko": "전체 경로 대신 파일 이름 표시" },
+        "kind": "toggle",
+        "default": true
+      }]
+    }]
+  },
+  "actions": [
+    {
+      "id": "sha256",
+      "title": { "en": "Copy SHA-256", "zh-Hans": "复制 SHA-256", "ko": "SHA-256 복사" },
+      "icon": "number",
+      "group": "other",
+      "rule": { "contexts": ["items"], "itemKinds": ["file"] },
+      "run": { "interpreter": "/bin/sh", "script": "scripts/checksum.sh", "arguments": ["sha256", "{files}"], "output": "clipboard", "timeout": 600 }
+    },
+    {
+      "id": "md5",
+      "title": { "en": "Copy MD5", "zh-Hans": "复制 MD5", "ko": "MD5 복사" },
+      "icon": "number",
+      "group": "other",
+      "rule": { "contexts": ["items"], "itemKinds": ["file"] },
+      "run": { "interpreter": "/bin/sh", "script": "scripts/checksum.sh", "arguments": ["md5", "{files}"], "output": "clipboard", "timeout": 600 }
+    }
+  ]
+}
