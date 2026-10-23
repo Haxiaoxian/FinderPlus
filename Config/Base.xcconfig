@@ -13,7 +13,8 @@ FP_BUNDLE_ID_PREFIX = io.github.finderplus.FinderPlus
 FP_APP_GROUP = $(DEVELOPMENT_TEAM).io.github.finderplus
 
 // Shown in General › About when set (e.g. your fork's GitHub URL).
-FP_PROJECT_URL =
+// "//" starts a comment in xcconfig files, hence the $() in the URL.
+FP_PROJECT_URL = https:/$()/github.com/Haxiaoxian/FinderPlus
 
 // Empty for Team-signed builds (App Group). `-AdHoc` for builds without a Team ID, see scripts/make-dmg.sh.
 FP_ENTITLEMENTS_VARIANT =
