@@ -26,9 +26,20 @@ public enum FinderPlusPaths {
            let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: identifier) {
             return url.appendingPathComponent("FinderPlus", isDirectory: true)
         }
-        // Unsigned development builds: fall back to Application Support. The sandboxed extension
-        // cannot reach this location, so the Finder menu only works in properly signed builds.
-        return hostDataRoot.appendingPathComponent("Shared", isDirectory: true)
+        // Builds without a Team ID (ad-hoc signed downloads, local development) have no App Group.
+        // Both sides then use a fixed folder in the *real* home directory; the sandboxed extension
+        // is granted access to exactly this folder by a temporary-exception entitlement
+        // (FinderSyncExtension-AdHoc.entitlements).
+        return realHomeDirectory
+            .appendingPathComponent("Library/Application Support/FinderPlus/Shared", isDirectory: true)
+    }
+
+    /// The user's home folder, even inside the sandbox (where `NSHomeDirectory()` is the container).
+    public static var realHomeDirectory: URL {
+        if let entry = getpwuid(getuid()), let directory = entry.pointee.pw_dir {
+            return URL(fileURLWithPath: String(cString: directory), isDirectory: true)
+        }
+        return URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
     }
 
     public static var hostDataRoot: URL {

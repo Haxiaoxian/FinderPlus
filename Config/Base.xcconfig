@@ -15,6 +15,9 @@ FP_APP_GROUP = $(DEVELOPMENT_TEAM).io.github.finderplus
 // Shown in General › About when set (e.g. your fork's GitHub URL).
 FP_PROJECT_URL =
 
+// Empty for Team-signed builds (App Group). `-AdHoc` for builds without a Team ID, see scripts/make-dmg.sh.
+FP_ENTITLEMENTS_VARIANT =
+
 CODE_SIGN_STYLE = Automatic
 DEVELOPMENT_TEAM =
 ENABLE_HARDENED_RUNTIME = YES

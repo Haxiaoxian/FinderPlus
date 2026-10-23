@@ -1,0 +1,35 @@
+name: Release
+
+# Builds a downloadable FinderPlus.dmg on an Apple Silicon runner.
+# - Manual run (Actions › Release › Run workflow): the DMG is attached to the run as an artifact.
+# - Pushing a tag like v0.1.0: the DMG is also published on the GitHub Releases page.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  dmg:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: xcodebuild -version && uname -m
+      - name: Unit tests
+        run: swift test --package-path Packages/FinderPlusKit
+      - name: Build DMG (arm64, ad-hoc signed)
+        run: scripts/make-dmg.sh
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FinderPlus-arm64-dmg
+          path: dist/*.dmg
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.dmg
+          body_path: docs/INSTALL.md

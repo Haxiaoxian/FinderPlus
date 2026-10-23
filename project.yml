@@ -41,7 +41,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(FP_BUNDLE_ID_PREFIX)
         INFOPLIST_FILE: App/Resources/Info.plist
         GENERATE_INFOPLIST_FILE: NO
-        CODE_SIGN_ENTITLEMENTS: App/Resources/FinderPlus.entitlements
+        CODE_SIGN_ENTITLEMENTS: App/Resources/FinderPlus$(FP_ENTITLEMENTS_VARIANT).entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         COMBINE_HIDPI_IMAGES: YES
@@ -63,7 +63,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(FP_BUNDLE_ID_PREFIX).FinderSync
         INFOPLIST_FILE: FinderSyncExtension/Info.plist
         GENERATE_INFOPLIST_FILE: NO
-        CODE_SIGN_ENTITLEMENTS: FinderSyncExtension/FinderSyncExtension.entitlements
+        CODE_SIGN_ENTITLEMENTS: FinderSyncExtension/FinderSyncExtension$(FP_ENTITLEMENTS_VARIANT).entitlements
         SKIP_INSTALL: YES
 schemes:
   FinderPlus:

@@ -25,6 +25,12 @@ FinderPlus 由 **宿主程序 + 功能模块 + Finder 集成层 + 统一执行�
 | 个性化与外观 `Appearance` | 语言、主题、菜单名称/布局/图标/命名方式 | 已实现 |
 | 脚本功能包 | 无需重新编译即可导入的 Shell/Python 功能；导入时审核并按内容哈希信任 | 已实现 |
 
+## 下载安装
+
+在 GitHub 仓库的 **Releases** 页面下载 `FinderPlus-x.y.z-arm64.dmg`（由 `.github/workflows/release.yml` 在 Apple Silicon 运行器上自动构建，未经 Apple 公证）。安装步骤见 [docs/INSTALL.md](docs/INSTALL.md)。
+
+本地自行打包：`make dmg`（无需 Apple 开发者账号，生成 ad-hoc 签名的 DMG）。
+
 ## 快速开始（Apple Silicon Mac）
 
 需要 Xcode 16+ 与 [XcodeGen](https://github.com/yonaskolb/XcodeGen)。

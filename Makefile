@@ -5,7 +5,7 @@ SCHEME    := FinderPlus
 BUILD_DIR := build
 PACKAGE   := Packages/FinderPlusKit
 
-.PHONY: help bootstrap generate build release universal test open run clean dist
+.PHONY: help bootstrap generate build release universal test open run clean dist dmg
 
 help:
 	@echo "make bootstrap   Install XcodeGen (Homebrew) and create Config/Local.xcconfig"
@@ -16,6 +16,7 @@ help:
 	@echo "make test        Run FinderPlusKit unit tests"
 	@echo "make run         Build (debug) and launch FinderPlus"
 	@echo "make dist        Zip the release app into dist/"
+	@echo "make dmg         Build an ad-hoc signed DMG into dist/ (no developer account needed)"
 
 bootstrap:
 	./scripts/bootstrap.sh
@@ -44,6 +45,9 @@ run: build
 
 dist:
 	./scripts/package.sh
+
+dmg:
+	./scripts/make-dmg.sh
 
 open: generate
 	open $(PROJECT)
