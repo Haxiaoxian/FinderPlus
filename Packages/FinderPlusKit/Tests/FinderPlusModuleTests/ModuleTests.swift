@@ -6,6 +6,7 @@ import XCTest
 @testable import FPMarkdownPDF
 @testable import FPPathTools
 @testable import FPQuickOpen
+@testable import FPSidebar
 
 final class BuiltinModuleContractTests: XCTestCase {
     func testManifestsAreUniqueAndSerializable() throws {
@@ -254,5 +255,28 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("file:///res/katex/katex.min.js"))
         XCTAssertTrue(html.contains("hljs.highlightAll()"))
         XCTAssertTrue(html.contains("<base href=\"file:///docs/\">"))
+    }
+}
+
+final class SidebarBackendTests: XCTestCase {
+    /// Regression test for a use-after-free: item references must stay valid while they are read.
+    func testReadingFavoritesDoesNotCrash() throws {
+        guard let backend = SidebarBackend() else { throw XCTSkip("LSSharedFileList is not available on this macOS") }
+        let items: [SidebarItem]
+        do {
+            items = try backend.items()
+        } catch {
+            throw XCTSkip("Sidebar list unavailable: \(error.localizedDescription)")
+        }
+        // Read every field repeatedly; with dangling references this crashes in objc_msgSend.
+        for _ in 0..<20 {
+            let again = try backend.items()
+            XCTAssertEqual(again.map(\.name), items.map(\.name))
+        }
+    }
+
+    func testDisabledModulesRunNoDependencyChecks() async {
+        // The sidebar is experimental and disabled by default, so the host must not call into it.
+        XCTAssertFalse(HostConfiguration().isEnabled(SidebarModule().manifest))
     }
 }

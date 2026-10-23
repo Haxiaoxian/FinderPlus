@@ -299,7 +299,8 @@ final class AppModel {
 
     func refreshDependencies() async {
         var result: [String: [DependencyStatus]] = [:]
-        for module in modules {
+        // Only enabled modules run code: a disabled (e.g. experimental) module must stay inert.
+        for module in modules where isEnabled(module) {
             result[module.id] = await engine.dependencyStatuses(for: module)
         }
         dependencyStatuses = result

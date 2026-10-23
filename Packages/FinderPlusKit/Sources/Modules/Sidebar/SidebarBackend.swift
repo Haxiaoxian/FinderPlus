@@ -87,8 +87,10 @@ final class SidebarBackend {
 
     func items() throws -> [SidebarItem] {
         try withList { list in
-            rawItems(list).enumerated().map { index, item in
-                SidebarItem(index: index, name: displayName(item), url: resolvedURL(item))
+            withItems(list) { items in
+                items.enumerated().map { index, item in
+                    SidebarItem(index: index, name: displayName(item), url: resolvedURL(item))
+                }
             }
         }
     }
@@ -111,9 +113,11 @@ final class SidebarBackend {
     func remove(_ url: URL) throws {
         let target = url.standardizedFileURL
         try withList { list in
-            for item in rawItems(list) where resolvedURL(item)?.standardizedFileURL == target {
-                let status = fnRemove(list, item)
-                if status != 0 { throw SidebarBackendError.operationFailed("LSSharedFileListItemRemove: \(status)") }
+            try withItems(list) { items in
+                for item in items where resolvedURL(item)?.standardizedFileURL == target {
+                    let status = fnRemove(list, item)
+                    if status != 0 { throw SidebarBackendError.operationFailed("LSSharedFileListItemRemove: \(status)") }
+                }
             }
         }
         if try items().contains(where: { $0.url?.standardizedFileURL == target }) {
@@ -124,14 +128,15 @@ final class SidebarBackend {
     /// Moves the item at `index` so that it ends up at `newIndex`.
     func move(from index: Int, to newIndex: Int) throws {
         try withList { list in
-            let all = rawItems(list)
-            guard all.indices.contains(index), all.indices.contains(newIndex), index != newIndex else { return }
-            let item = all[index]
-            var remaining = all
-            remaining.remove(at: index)
-            let after: OpaquePointer? = newIndex == 0 ? beforeFirstMarker : remaining[newIndex - 1]
-            let status = fnMove(list, item, after)
-            if status != 0 { throw SidebarBackendError.operationFailed("LSSharedFileListItemMove: \(status)") }
+            try withItems(list) { all in
+                guard all.indices.contains(index), all.indices.contains(newIndex), index != newIndex else { return }
+                let item = all[index]
+                var remaining = all
+                remaining.remove(at: index)
+                let after: OpaquePointer? = newIndex == 0 ? beforeFirstMarker : remaining[newIndex - 1]
+                let status = fnMove(list, item, after)
+                if status != 0 { throw SidebarBackendError.operationFailed("LSSharedFileListItemMove: \(status)") }
+            }
         }
     }
 
@@ -143,11 +148,16 @@ final class SidebarBackend {
         return try body(list)
     }
 
-    private func rawItems(_ list: OpaquePointer) -> [OpaquePointer] {
-        guard let arrayPointer = fnSnapshot(list, nil) else { return [] }
+    /// Calls `body` with the list's items. The item references are owned by the snapshot array, so
+    /// they are only valid inside `body`, while the array is kept alive — never let them escape.
+    private func withItems<T>(_ list: OpaquePointer, _ body: ([OpaquePointer]) throws -> T) rethrows -> T {
+        guard let arrayPointer = fnSnapshot(list, nil) else { return try body([]) }
         let array = Unmanaged<CFArray>.fromOpaque(UnsafeRawPointer(arrayPointer)).takeRetainedValue()
-        return (0..<CFArrayGetCount(array)).compactMap { index in
-            CFArrayGetValueAtIndex(array, index).map { OpaquePointer($0) }
+        return try withExtendedLifetime(array) {
+            let items = (0..<CFArrayGetCount(array)).compactMap { index in
+                CFArrayGetValueAtIndex(array, index).map { OpaquePointer($0) }
+            }
+            return try body(items)
         }
     }
 

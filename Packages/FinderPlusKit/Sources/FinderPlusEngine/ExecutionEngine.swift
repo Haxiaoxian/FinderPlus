@@ -184,7 +184,9 @@ public final class ExecutionEngine {
     // MARK: Dependencies
 
     public func dependencyStatuses(for module: FinderPlusModule) async -> [DependencyStatus] {
-        let settings = configuration.load().settings(for: module.manifest)
+        let config = configuration.load()
+        guard config.isEnabled(module.manifest) else { return [] }
+        let settings = config.settings(for: module.manifest)
         return await module.dependencyStatuses(settings: settings, checker: dependencies)
     }
 }
