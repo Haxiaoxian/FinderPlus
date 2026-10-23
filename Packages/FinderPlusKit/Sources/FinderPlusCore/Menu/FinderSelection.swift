@@ -30,11 +30,22 @@ public struct SelectedItem: Codable, Hashable, Sendable {
     public var name: String { url.lastPathComponent }
 
     /// Inspects the file system to determine the kind of `url`.
+    ///
+    /// Inside the sandboxed Finder extension, metadata of File Provider items (OneDrive, Dropbox,
+    /// iCloud Drive…) can be unreadable. Then the URL's trailing slash decides, and a name without an
+    /// extension is assumed to be a folder; the host re-inspects before running anything.
     public static func inspect(_ url: URL) -> SelectedItem {
-        let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey])
-        let isDirectory = values?.isDirectory ?? url.hasDirectoryPath
-        if isDirectory {
-            return SelectedItem(url: url, kind: values?.isPackage == true ? .package : .folder)
+        if let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey]),
+           let isDirectory = values.isDirectory {
+            if isDirectory { return SelectedItem(url: url, kind: values.isPackage == true ? .package : .folder) }
+            return SelectedItem(url: url, kind: .file)
+        }
+        var isDirectory: ObjCBool = false
+        if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) {
+            return SelectedItem(url: url, kind: isDirectory.boolValue ? .folder : .file)
+        }
+        if url.hasDirectoryPath || url.pathExtension.isEmpty {
+            return SelectedItem(url: url, kind: .folder)
         }
         return SelectedItem(url: url, kind: .file)
     }

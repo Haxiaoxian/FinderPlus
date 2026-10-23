@@ -114,15 +114,19 @@ public struct ModuleContext: Sendable {
     public var processes: ProcessRunner
     public var reporter: TaskReporter
     public var dependencies: DependencyChecking
+    /// Private Python environments managed by FinderPlus (no system Python or Homebrew needed).
+    public var python: PythonEnvironmentProviding
 
     public init(moduleID: String, dataDirectory: URL, system: SystemServices, processes: ProcessRunner,
-                reporter: TaskReporter, dependencies: DependencyChecking) {
+                reporter: TaskReporter, dependencies: DependencyChecking,
+                python: PythonEnvironmentProviding = UnavailablePythonEnvironments()) {
         self.moduleID = moduleID
         self.dataDirectory = dataDirectory
         self.system = system
         self.processes = processes
         self.reporter = reporter
         self.dependencies = dependencies
+        self.python = python
     }
 
     /// `dataDirectory`, created if necessary.
@@ -154,4 +158,40 @@ public struct SilentTaskReporter: TaskReporter {
     public init() {}
     public func progress(_ fraction: Double?, message: String?) {}
     public func log(_ line: String) {}
+}
+
+/// Isolated Python environments shared by every module that needs Python packages.
+///
+/// The host downloads a pinned, checksum-verified `uv` and lets it install a standalone Python, so a
+/// module only says *which packages* it needs; nothing touches the user's own Python installation.
+public protocol PythonEnvironmentProviding: Sendable {
+    /// Creates or updates `Runtimes/envs/<name>` with `packages` installed and returns the folder.
+    func prepareEnvironment(named name: String, pythonVersion: String, packages: [String],
+                            reporter: TaskReporter) async throws -> URL
+    /// Folder of the environment (it may not exist yet).
+    func environmentDirectory(named name: String) -> URL
+    /// An executable inside the environment's `bin` folder, if installed.
+    func executable(_ command: String, inEnvironment name: String) -> URL?
+    func removeEnvironment(named name: String) throws
+}
+
+/// Used where no host is available (tests, previews).
+public struct UnavailablePythonEnvironments: PythonEnvironmentProviding {
+    public init() {}
+
+    public func prepareEnvironment(named name: String, pythonVersion: String, packages: [String],
+                                   reporter: TaskReporter) async throws -> URL {
+        throw ModuleError.unsupported("Managed Python environments are not available here.")
+    }
+
+    public func environmentDirectory(named name: String) -> URL {
+        FinderPlusPaths.runtimesDirectory.appendingPathComponent("envs/\(name)", isDirectory: true)
+    }
+
+    public func executable(_ command: String, inEnvironment name: String) -> URL? {
+        let url = environmentDirectory(named: name).appendingPathComponent("bin/\(command)")
+        return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
+    }
+
+    public func removeEnvironment(named name: String) throws {}
 }

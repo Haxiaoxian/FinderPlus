@@ -306,6 +306,29 @@ final class AppModel {
         dependencyStatuses = result
     }
 
+    func refreshDependencies(for module: FinderPlusModule) async {
+        dependencyStatuses[module.id] = isEnabled(module) ? await engine.dependencyStatuses(for: module) : []
+    }
+
+    /// Dependencies that FinderPlus can install by itself, as (module, fix action) pairs.
+    var fixableDependencies: [(module: FinderPlusModule, status: DependencyStatus)] {
+        modules.filter(isEnabled).flatMap { module in
+            (dependencyStatuses[module.id] ?? [])
+                .filter { !$0.isSatisfied && $0.fixActionID != nil }
+                .map { (module, $0) }
+        }
+    }
+
+    /// One click: runs every available installer for missing dependencies of enabled modules.
+    func installAllMissingDependencies() {
+        for entry in fixableDependencies {
+            if let action = entry.status.fixActionID {
+                engine.runHostAction(moduleID: entry.module.id, actionID: action)
+            }
+        }
+        selection = .tasks
+    }
+
     func missingRequiredDependencies(_ module: FinderPlusModule) -> [DependencyStatus] {
         (dependencyStatuses[module.id] ?? []).filter { $0.isRequired && $0.state == .missing }
     }

@@ -79,7 +79,7 @@ let package = Package(
         .testTarget(name: "FinderPlusCoreTests", dependencies: ["FinderPlusCore", "FinderPlusEngine"]),
         .testTarget(
             name: "FinderPlusModuleTests",
-            dependencies: ["FinderPlusCore", "FinderPlusBuiltinModules"]
+            dependencies: ["FinderPlusCore", "FinderPlusEngine", "FinderPlusBuiltinModules"]
                 + builtinModules.map { Target.Dependency(stringLiteral: "FP\($0)") }
         ),
     ]

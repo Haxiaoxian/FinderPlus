@@ -22,7 +22,7 @@ jobs:
       - name: Unit tests
         run: |
           set -o pipefail
-          swift test --package-path Packages/FinderPlusKit 2>&1 | tee ci-logs/tests.log
+          FINDERPLUS_NETWORK_TESTS=1 swift test --package-path Packages/FinderPlusKit 2>&1 | tee ci-logs/tests.log
       - name: Build app (arm64)
         if: always()
         run: |

@@ -58,6 +58,35 @@ struct ModuleSettingsView: View {
                 }
             }
 
+            let statuses = model.dependencyStatuses[module.id] ?? []
+            if enabled, !statuses.isEmpty {
+                Section(HostStrings.runtimeSection.localized) {
+                    ForEach(statuses) { status in
+                        HStack(alignment: .firstTextBaseline) {
+                            Image(systemName: status.state.symbol).foregroundStyle(status.state.color)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(status.displayName)
+                                if let detail = status.detail {
+                                    Text(detail).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                                }
+                                if !status.isSatisfied, let hint = status.installHint {
+                                    Text(hint).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            if let fix = status.fixActionID {
+                                if status.isSatisfied {
+                                    Button(HostStrings.update.localized) { runFix(fix) }
+                                } else {
+                                    Button(HostStrings.setUpOneClick.localized) { runFix(fix) }
+                                        .buttonStyle(.borderedProminent)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             Group {
                 if !(custom?.replacesGeneratedSettings ?? false) {
                     SchemaForm(schema: manifest.settings, settings: settings)
@@ -100,6 +129,7 @@ struct ModuleSettingsView: View {
         }
         .formStyle(.grouped)
         .navigationTitle(manifest.name.localized)
+        .task(id: "\(enabled)-\(model.tasks.running.count)") { await model.refreshDependencies(for: module) }
         .confirmationDialog(HostStrings.resetSettings.localized, isPresented: $confirmReset) {
             Button(HostStrings.resetSettings.localized, role: .destructive) { model.resetSettings(module) }
         }
@@ -108,6 +138,11 @@ struct ModuleSettingsView: View {
         } message: {
             Text(HostStrings.enableExperimentalMessage.localized)
         }
+    }
+
+    private func runFix(_ actionID: String) {
+        model.engine.runHostAction(moduleID: module.id, actionID: actionID)
+        model.selection = .tasks
     }
 
     private func setEnabled(_ enabled: Bool) {

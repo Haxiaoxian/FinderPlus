@@ -82,14 +82,31 @@ public struct MenuSnapshot: Codable, Hashable, Sendable {
     public var appearance: MenuAppearance
     public var groups: [Group]
     public var items: [Item]
+    /// Extra folders the Finder extension must register explicitly. Cloud-storage locations
+    /// (OneDrive, Dropbox, Google Drive, iCloud Drive) are managed by File Provider, and Finder
+    /// only consults a Finder Sync extension there when the folder is listed by its own path.
+    public var monitoredDirectories: [String]
 
     public init(formatVersion: Int = MenuSnapshot.currentFormatVersion, generatedAt: Date = Date(),
-                appearance: MenuAppearance, groups: [Group], items: [Item]) {
+                appearance: MenuAppearance, groups: [Group], items: [Item], monitoredDirectories: [String] = []) {
         self.formatVersion = formatVersion
         self.generatedAt = generatedAt
         self.appearance = appearance
         self.groups = groups
         self.items = items
+        self.monitoredDirectories = monitoredDirectories
+    }
+
+    enum CodingKeys: String, CodingKey { case formatVersion, generatedAt, appearance, groups, items, monitoredDirectories }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        formatVersion = try container.decode(Int.self, forKey: .formatVersion, default: 1)
+        generatedAt = try container.decode(Date.self, forKey: .generatedAt, default: Date())
+        appearance = try container.decode(MenuAppearance.self, forKey: .appearance, default: MenuAppearance())
+        groups = try container.decode([Group].self, forKey: .groups, default: [])
+        items = try container.decode([Item].self, forKey: .items, default: [])
+        monitoredDirectories = try container.decode([String].self, forKey: .monitoredDirectories, default: [])
     }
 
     public static let empty = MenuSnapshot(appearance: MenuAppearance(), groups: [], items: [])

@@ -132,7 +132,20 @@ enum HostStrings {
     static let accessibilityHelp = t("Only needed to start renaming automatically after creating a file.", "仅在新建文件后自动进入重命名时需要。",
                                      "파일을 만든 후 자동으로 이름 변경을 시작할 때만 필요합니다.")
     static let optional = t("Optional", "可选", "선택")
-    static let install = t("Install", "安装", "설치")
+    static let setUpAll = t("Set Up Everything", "一键配置全部", "모두 설정")
+    static let setUpAllTitle = t("Some modules need a runtime FinderPlus can install for you",
+                                 "部分模块需要的运行环境可以由 FinderPlus 自动配置",
+                                 "일부 모듈에 필요한 런타임을 FinderPlus가 설치할 수 있습니다")
+    static let setUpOneClick = t("Set Up", "一键配置", "설정")
+    static let runtimeSection = t("Runtime", "运行环境", "런타임")
+    static let diagnostics = t("Finder extension diagnostics", "Finder 扩展诊断", "Finder 확장 진단")
+    static let diagnosticsHelp = t("What Finder recently asked FinderPlus. If right-clicking somewhere shows no FinderPlus menu and no new line appears here, Finder did not ask the extension for that location.",
+                                   "Finder 最近向 FinderPlus 发出的请求。如果在某个位置右键没有 FinderPlus 菜单、这里也没有新增记录，说明 Finder 没有为该位置调用扩展。",
+                                   "Finder가 최근 FinderPlus에 보낸 요청입니다. 어떤 위치에서 오른쪽 클릭해도 메뉴가 없고 여기에도 새 줄이 없다면, Finder가 그 위치에서 확장을 호출하지 않은 것입니다.")
+    static let diagnosticsEmpty = t("No requests recorded yet.", "暂无记录。", "기록된 요청이 없습니다.")
+    static let copyDiagnostics = t("Copy Diagnostics", "复制诊断信息", "진단 정보 복사")
+    static let copied = t("Copied", "已复制", "복사됨")
+    static let clear = t("Clear", "清空", "지우기")
     static let refresh = t("Refresh", "刷新", "새로 고침")
     static let showQuickActions = t("Show quick actions", "显示快速操作", "빠른 작업 표시")
     static let clearFinished = t("Clear Finished", "清除已完成", "완료 항목 지우기")

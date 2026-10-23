@@ -23,11 +23,20 @@ public final class MarkItDownModule: FinderPlusModule {
     static let inputExtensions: Set<String> = ["pdf", "docx", "pptx", "xlsx", "xls", "html", "htm", "csv", "json", "xml",
                                                 "epub", "msg", "ipynb", "zip", "txt", "rtf"]
 
-    public let runtimeDirectory: URL
+    static let environmentName = "markitdown"
+    static let pythonVersion = "3.12"
+    static let packages = ["markitdown[all]"]
 
-    public init(runtimeDirectory: URL = FinderPlusPaths.runtimesDirectory.appendingPathComponent("markitdown", isDirectory: true)) {
-        self.runtimeDirectory = runtimeDirectory
+    public let runtimesRoot: URL
+
+    public init(runtimesRoot: URL = FinderPlusPaths.runtimesDirectory) {
+        self.runtimesRoot = runtimesRoot
     }
+
+    /// Environment created by the one-click installer (uv + standalone Python).
+    var managedEnvironment: URL { runtimesRoot.appendingPathComponent("envs/\(Self.environmentName)", isDirectory: true) }
+    /// Environment created by FinderPlus 0.1.0–0.1.3 from the system Python; still honored.
+    var legacyEnvironment: URL { runtimesRoot.appendingPathComponent("markitdown", isDirectory: true) }
 
     public let manifest = ModuleManifest(
         id: MarkItDownModule.id,
@@ -52,9 +61,13 @@ public final class MarkItDownModule: FinderPlusModule {
                 ], default: "managed"),
                 .path(Key.customExecutable, LocalizedText(en: "markitdown executable", zhHans: "markitdown 可执行文件", ko: "markitdown 실행 파일"),
                       kind: .file, visibleWhen: SettingCondition(key: Key.runtime, equals: ["custom"])),
-                .path(Key.basePython, LocalizedText(en: "Python used to create the environment", zhHans: "创建环境所用的 Python", ko: "환경 생성에 사용할 Python"),
+                .path(Key.basePython, LocalizedText(en: "Fallback Python (only if the download fails)", zhHans: "备用 Python（仅在下载失败时使用）",
+                                                    ko: "대체 Python(다운로드 실패 시에만)"),
                       kind: .file, placeholder: LocalizedText(en: "Newest Python ≥ 3.10 found automatically", zhHans: "自动选择 ≥ 3.10 的最新 Python",
                                                               ko: "3.10 이상 최신 Python 자동 선택"),
+                      help: LocalizedText(en: "“Install” downloads its own Python automatically; no Python or Homebrew is needed on this Mac.",
+                                          zhHans: "“安装”会自动下载独立的 Python，本机无需预先安装 Python 或 Homebrew。",
+                                          ko: "“설치”는 자체 Python을 자동으로 내려받습니다. 이 Mac에 Python이나 Homebrew가 없어도 됩니다."),
                       visibleWhen: SettingCondition(key: Key.runtime, equals: ["managed"])),
             ]),
             SettingsSection(id: "output", title: LocalizedText(en: "Output", zhHans: "输出", ko: "출력"), fields: [
@@ -94,9 +107,6 @@ public final class MarkItDownModule: FinderPlusModule {
         ]
     }
 
-    var managedExecutable: URL { runtimeDirectory.appendingPathComponent("bin/markitdown") }
-    var managedPython: URL { runtimeDirectory.appendingPathComponent("bin/python") }
-
     func executable(settings: ModuleSettings) -> URL? {
         switch settings.string(Key.runtime) {
         case "custom":
@@ -104,37 +114,36 @@ public final class MarkItDownModule: FinderPlusModule {
         case "path":
             return ExecutableLocator.locate("markitdown")
         default:
-            return FileManager.default.isExecutableFile(atPath: managedExecutable.path) ? managedExecutable : nil
+            return [managedEnvironment, legacyEnvironment]
+                .map { $0.appendingPathComponent("bin/markitdown") }
+                .first { FileManager.default.isExecutableFile(atPath: $0.path) }
         }
     }
 
+    func isManaged(_ settings: ModuleSettings) -> Bool {
+        let runtime = settings.string(Key.runtime)
+        return runtime == "managed" || runtime.isEmpty
+    }
+
     public func dependencyStatuses(settings: ModuleSettings, checker: DependencyChecking) async -> [DependencyStatus] {
-        let managed = settings.string(Key.runtime) == "managed" || settings.string(Key.runtime).isEmpty
+        let managed = isManaged(settings)
         if let url = executable(settings: settings) {
             return [DependencyStatus(id: "markitdown-runtime", displayName: "MarkItDown", state: .satisfied, detail: url.path,
                                      fixActionID: managed ? "installRuntime" : nil)]
         }
-        let python = PythonFinder.findPython(preferred: settings.nonEmptyString(Key.basePython))
-        let hint: String
-        if managed {
-            hint = python == nil
-                ? LocalizedText(en: "Python 3.10 or newer is required: brew install python", zhHans: "需要 Python 3.10 或更高版本：brew install python",
-                                ko: "Python 3.10 이상이 필요합니다: brew install python").localized
-                : LocalizedText(en: "Click Install to create a private environment with MarkItDown.",
-                                zhHans: "点击“安装”即可创建包含 MarkItDown 的独立环境。",
-                                ko: "설치를 눌러 MarkItDown 전용 환경을 만드세요.").localized
-        } else {
-            hint = "pipx install 'markitdown[all]'"
-        }
+        let hint = managed
+            ? LocalizedText(en: "One click: FinderPlus downloads its own Python and MarkItDown (about 450 MB, needs internet).",
+                            zhHans: "一键安装：FinderPlus 会自动下载独立的 Python 与 MarkItDown（约 450 MB，需要联网）。",
+                            ko: "원클릭: FinderPlus가 자체 Python과 MarkItDown을 내려받습니다(약 450MB, 인터넷 필요).").localized
+            : "pipx install 'markitdown[all]'"
         return [DependencyStatus(id: "markitdown-runtime", displayName: "MarkItDown", state: .missing,
-                                 detail: python.map { "Python: \($0.url.path) (\($0.version))" },
-                                 installHint: hint, fixActionID: managed && python != nil ? "installRuntime" : nil)]
+                                 installHint: hint, fixActionID: managed ? "installRuntime" : nil)]
     }
 
     public func perform(_ invocation: ActionInvocation, context: ModuleContext) async throws -> ActionOutcome {
         switch invocation.actionID {
         case "installRuntime": return try await installRuntime(settings: invocation.settings, context: context)
-        case "removeRuntime": return try removeRuntime()
+        case "removeRuntime": return try removeRuntime(context: context)
         case "convert": return try await convert(invocation, context: context)
         default: throw ModuleError.unknownAction(invocation.actionID)
         }
@@ -144,6 +153,20 @@ public final class MarkItDownModule: FinderPlusModule {
 
     private func convert(_ invocation: ActionInvocation, context: ModuleContext) async throws -> ActionOutcome {
         let settings = invocation.settings
+        if executable(settings: settings) == nil, isManaged(settings) {
+            // Offer the one-click setup right here instead of sending the user to another page.
+            let install = await context.system.confirm(
+                title: LocalizedText(en: "Set up MarkItDown?", zhHans: "配置 MarkItDown 运行环境？", ko: "MarkItDown을 설정할까요?").localized,
+                message: LocalizedText(
+                    en: "MarkItDown needs a Python environment. FinderPlus can download and set it up now (about 450 MB). Conversion starts when it is ready.",
+                    zhHans: "MarkItDown 需要 Python 环境。FinderPlus 可以现在自动下载并配置（约 450 MB），完成后立即开始转换。",
+                    ko: "MarkItDown에는 Python 환경이 필요합니다. 지금 내려받아 설정할 수 있습니다(약 450MB). 준비되면 변환을 시작합니다."
+                ).localized,
+                confirmButton: LocalizedText(en: "Set Up", zhHans: "一键配置", ko: "설정").localized
+            )
+            guard install else { throw ModuleError.cancelled }
+            _ = try await installRuntime(settings: settings, context: context)
+        }
         guard let markitdown = executable(settings: settings) else {
             throw ModuleError.dependencyMissing(LocalizedText(
                 en: "MarkItDown is not installed. Open FinderPlus › Dependencies to install it.",
@@ -210,14 +233,28 @@ public final class MarkItDownModule: FinderPlusModule {
     // MARK: Runtime management
 
     private func installRuntime(settings: ModuleSettings, context: ModuleContext) async throws -> ActionOutcome {
-        guard let python = PythonFinder.findPython(preferred: settings.nonEmptyString(Key.basePython)) else {
-            throw ModuleError.dependencyMissing(LocalizedText(
-                en: "No Python 3.10+ found. Install it with `brew install python` or from python.org.",
-                zhHans: "未找到 Python 3.10 及以上版本。请通过 `brew install python` 或 python.org 安装。",
-                ko: "Python 3.10 이상을 찾을 수 없습니다. `brew install python` 또는 python.org에서 설치하세요."
-            ).localized)
+        do {
+            let folder = try await context.python.prepareEnvironment(named: Self.environmentName, pythonVersion: Self.pythonVersion,
+                                                                     packages: Self.packages, reporter: context.reporter)
+            context.reporter.log("MarkItDown environment: \(folder.path)")
+            return .message(LocalizedText(en: "MarkItDown is ready (Python \(Self.pythonVersion)).",
+                                          zhHans: "MarkItDown 已就绪（Python \(Self.pythonVersion)）。",
+                                          ko: "MarkItDown 준비 완료(Python \(Self.pythonVersion)).").localized)
+        } catch is CancellationError {
+            throw ModuleError.cancelled
+        } catch ModuleError.cancelled {
+            throw ModuleError.cancelled
+        } catch {
+            // Offline fallback: build the environment from a Python already on this Mac.
+            guard let python = PythonFinder.findPython(preferred: settings.nonEmptyString(Key.basePython)) else { throw error }
+            context.reporter.log("Download failed (\(error.localizedDescription)); falling back to \(python.url.path)")
+            return try await installWithSystemPython(python, context: context)
         }
+    }
+
+    private func installWithSystemPython(_ python: PythonFinder.Found, context: ModuleContext) async throws -> ActionOutcome {
         let reporter = context.reporter
+        let environmentPython = legacyEnvironment.appendingPathComponent("bin/python")
         func step(_ fraction: Double, _ message: String, _ executable: URL, _ arguments: [String]) async throws {
             try context.checkCancellation()
             reporter.progress(fraction, message: message)
@@ -226,20 +263,21 @@ public final class MarkItDownModule: FinderPlusModule {
                                                          onOutputLine: { reporter.log($0) })
             guard result.succeeded else { throw ModuleError.failed(result.diagnosticTail) }
         }
-        try FileManager.default.createDirectory(at: runtimeDirectory.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if !FileManager.default.isExecutableFile(atPath: managedPython.path) {
-            try await step(0.1, "Creating virtual environment", python.url, ["-m", "venv", runtimeDirectory.path])
+        try FileManager.default.createDirectory(at: runtimesRoot, withIntermediateDirectories: true)
+        if !FileManager.default.isExecutableFile(atPath: environmentPython.path) {
+            try await step(0.1, "Creating virtual environment", python.url, ["-m", "venv", legacyEnvironment.path])
         }
-        try await step(0.3, "Updating pip", managedPython, ["-m", "pip", "install", "--upgrade", "pip"])
-        try await step(0.5, "Installing markitdown[all]", managedPython, ["-m", "pip", "install", "--upgrade", "markitdown[all]"])
+        try await step(0.3, "Updating pip", environmentPython, ["-m", "pip", "install", "--upgrade", "pip"])
+        try await step(0.5, "Installing markitdown[all]", environmentPython, ["-m", "pip", "install", "--upgrade"] + Self.packages)
         reporter.progress(1, message: nil)
         return .message(LocalizedText(en: "MarkItDown is ready (Python \(python.version)).", zhHans: "MarkItDown 已就绪（Python \(python.version)）。",
                                       ko: "MarkItDown 준비 완료(Python \(python.version)).").localized)
     }
 
-    private func removeRuntime() throws -> ActionOutcome {
-        if FileManager.default.fileExists(atPath: runtimeDirectory.path) {
-            try FileManager.default.trashItem(at: runtimeDirectory, resultingItemURL: nil)
+    private func removeRuntime(context: ModuleContext) throws -> ActionOutcome {
+        try context.python.removeEnvironment(named: Self.environmentName)
+        if FileManager.default.fileExists(atPath: legacyEnvironment.path) {
+            try FileManager.default.trashItem(at: legacyEnvironment, resultingItemURL: nil)
         }
         return .message(LocalizedText(en: "MarkItDown environment moved to the Trash.", zhHans: "MarkItDown 环境已移到废纸篓。",
                                       ko: "MarkItDown 환경을 휴지통으로 옮겼습니다.").localized)

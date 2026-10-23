@@ -23,6 +23,7 @@ public final class ExecutionEngine {
     public let system: SystemServices
     public let dependencies: DependencyChecking
     public let processes = ProcessRunner()
+    public let python = ManagedPythonEnvironments()
 
     /// Presents module windows for interactive actions. Set by the host app.
     public var interactiveHandler: ((InteractiveRequest) -> Void)?
@@ -44,6 +45,11 @@ public final class ExecutionEngine {
     // MARK: Dispatch
 
     public func handle(_ request: ActionRequest) {
+        var request = request
+        if request.origin == .finder {
+            // The sandboxed extension may have guessed item kinds (cloud folders); check them for real.
+            request.selection.items = request.selection.items.map { SelectedItem.inspect($0.url) }
+        }
         let config = configuration.load()
         guard let module = registry.module(request.moduleID) else {
             tasks.recordRejection(request: request, moduleName: request.moduleID, title: request.actionID,
@@ -110,7 +116,8 @@ public final class ExecutionEngine {
             system: system,
             processes: processes,
             reporter: StoreTaskReporter(store: tasks, taskID: taskID),
-            dependencies: dependencies
+            dependencies: dependencies,
+            python: python
         )
         var parameters = action.parameters
         parameters.merge(request.parameters) { _, requested in requested }
@@ -156,7 +163,8 @@ public final class ExecutionEngine {
     @discardableResult
     public func publishMenuSnapshot() -> MenuSnapshot {
         let config = configuration.load()
-        let snapshot = Self.buildSnapshot(registry: registry, configuration: config)
+        var snapshot = Self.buildSnapshot(registry: registry, configuration: config)
+        snapshot.monitoredDirectories = CloudStorageLocations.discover()
         do {
             try snapshot.write()
         } catch {

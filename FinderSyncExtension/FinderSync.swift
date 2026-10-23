@@ -19,14 +19,35 @@ final class FinderSync: FIFinderSync {
     private var pendingItems: [Int: MenuSnapshot.Item] = [:]
     private var pendingSelection: FinderSelection?
 
+    private var monitored: Set<URL> = []
+
     override init() {
         super.init()
-        // Monitor every local and mounted volume so the menu is available everywhere.
-        FIFinderSyncController.default().directoryURLs = [
-            URL(fileURLWithPath: "/"),
-            URL(fileURLWithPath: "/Volumes"),
-        ]
         reloadSnapshotIfNeeded()
+        updateMonitoredDirectories()
+        ExtensionDiagnostics.record("start", "Monitoring: " + monitored.map(\.path).sorted().joined(separator: ", "))
+    }
+
+    /// Every local and mounted volume, plus each cloud-storage folder by its own path: Finder only
+    /// asks a Finder Sync extension about File Provider locations (OneDrive, iCloud Drive, …)
+    /// when they are registered explicitly.
+    private func updateMonitoredDirectories() {
+        var directories: Set<URL> = [URL(fileURLWithPath: "/"), URL(fileURLWithPath: "/Volumes")]
+        let home = FinderPlusPaths.realHomeDirectory
+        directories.insert(home)
+        directories.insert(home.appendingPathComponent("Library/CloudStorage", isDirectory: true))
+        for path in snapshot.monitoredDirectories {
+            directories.insert(URL(fileURLWithPath: path, isDirectory: true))
+        }
+        guard directories != monitored else { return }
+        monitored = directories
+        FIFinderSyncController.default().directoryURLs = directories
+    }
+
+    override func beginObservingDirectory(at url: URL) {
+        if CloudStorageLocations.isCloudItem(url) {
+            ExtensionDiagnostics.record("observe", url.path)
+        }
     }
 
     // MARK: Menu
@@ -46,7 +67,15 @@ final class FinderSync: FIFinderSync {
         }
 
         reloadSnapshotIfNeeded()
+        updateMonitoredDirectories()
         let resolved = MenuResolver.resolve(snapshot, for: selection)
+        ExtensionDiagnostics.record(
+            "menu",
+            "\(selection.context.rawValue): "
+                + (selection.context == .container ? (selection.container?.path ?? "?")
+                   : selection.items.map { "\($0.path) [\($0.kind.rawValue)]" }.joined(separator: ", "))
+                + " → \(resolved.allItems.count) items"
+        )
         guard !resolved.isEmpty else { return nil }
 
         pendingItems.removeAll()
@@ -113,8 +142,10 @@ final class FinderSync: FIFinderSync {
                                     selection: selection, origin: .finder)
         do {
             try RequestInbox().submit(request)
+            ExtensionDiagnostics.record("action", "\(request.key) on \(selection.targetURLs.map(\.path).joined(separator: ", "))")
         } catch {
             logger.error("Could not write request: \(error.localizedDescription, privacy: .public)")
+            ExtensionDiagnostics.record("error", "Could not write request: \(error.localizedDescription)")
             return
         }
         let configuration = NSWorkspace.OpenConfiguration()
@@ -123,6 +154,7 @@ final class FinderSync: FIFinderSync {
         NSWorkspace.shared.open(FinderPlusURL.dispatch(request.id), configuration: configuration) { [logger] _, error in
             if let error {
                 logger.error("Could not reach FinderPlus: \(error.localizedDescription, privacy: .public)")
+                ExtensionDiagnostics.record("error", "Could not reach FinderPlus: \(error.localizedDescription)")
             }
         }
     }
@@ -156,6 +188,7 @@ final class FinderSync: FIFinderSync {
             snapshotModificationDate = modified
         } catch {
             logger.error("Could not read menu snapshot: \(error.localizedDescription, privacy: .public)")
+            ExtensionDiagnostics.record("error", "Could not read menu snapshot at \(url.path): \(error.localizedDescription)")
         }
     }
 }

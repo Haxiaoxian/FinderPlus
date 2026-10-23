@@ -42,6 +42,23 @@ struct DependenciesView: View {
 
     var body: some View {
         Form {
+            if !model.fixableDependencies.isEmpty {
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: "wand.and.stars").font(.title2).foregroundStyle(Color.accentColor)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(HostStrings.setUpAllTitle.localized).font(.headline)
+                            Text(model.fixableDependencies.map { "\($0.module.manifest.name.localized): \($0.status.displayName)" }
+                                .joined(separator: " · "))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button(HostStrings.setUpAll.localized) { model.installAllMissingDependencies() }
+                            .buttonStyle(.borderedProminent)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
             Section(HostStrings.systemIntegration.localized) {
                 statusRow(HostStrings.finderExtension.localized, ok: model.extensionEnabled,
                           detail: model.extensionEnabled ? nil : HostStrings.extensionHelp.localized) {
@@ -74,7 +91,7 @@ struct DependenciesView: View {
                                 }
                                 Spacer()
                                 if let fix = status.fixActionID {
-                                    Button(status.isSatisfied ? HostStrings.update.localized : HostStrings.install.localized) {
+                                    Button(status.isSatisfied ? HostStrings.update.localized : HostStrings.setUpOneClick.localized) {
                                         model.engine.runHostAction(moduleID: module.id, actionID: fix)
                                         model.selection = .tasks
                                     }
@@ -84,6 +101,7 @@ struct DependenciesView: View {
                     }
                 }
             }
+            ExtensionDiagnosticsSection()
         }
         .formStyle(.grouped)
         .navigationTitle(HostStrings.dependencies.localized)
@@ -93,7 +111,8 @@ struct DependenciesView: View {
                     .disabled(refreshing)
             }
         }
-        .task { await refresh() }
+        // Also re-check when an installer task finishes.
+        .task(id: model.tasks.running.count) { await refresh() }
     }
 
     private func refresh() async {
@@ -233,5 +252,60 @@ struct GeneralSettingsView: View {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
         if panel.runModal() == .OK, let url = panel.url { model.importConfiguration(from: url) }
+    }
+}
+
+/// What Finder recently asked the Finder extension, to diagnose locations without a menu.
+private struct ExtensionDiagnosticsSection: View {
+    @State private var diagnostics = ExtensionDiagnostics()
+    @State private var copied = false
+
+    var body: some View {
+        Section {
+            Text(HostStrings.diagnosticsHelp.localized).font(.caption).foregroundStyle(.secondary)
+            if diagnostics.events.isEmpty {
+                Text(HostStrings.diagnosticsEmpty.localized).foregroundStyle(.secondary)
+            }
+            ForEach(diagnostics.events.suffix(15).reversed()) { event in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(event.date.formatted(date: .omitted, time: .standard))
+                        .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    Badge(text: event.kind, color: event.kind == "error" ? .red : .secondary)
+                    Text(event.detail).font(.caption).textSelection(.enabled).lineLimit(3)
+                }
+            }
+            HStack {
+                Button(copied ? HostStrings.copied.localized : HostStrings.copyDiagnostics.localized) {
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(diagnosticsReport, forType: .string)
+                    copied = true
+                }
+                Button(HostStrings.clear.localized) {
+                    ExtensionDiagnostics.clear()
+                    diagnostics = ExtensionDiagnostics()
+                }
+                Spacer()
+                Button { reload() } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.borderless)
+            }
+        } header: {
+            Text(HostStrings.diagnostics.localized)
+        }
+        .onAppear(perform: reload)
+    }
+
+    private var diagnosticsReport: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        return """
+        FinderPlus \(version) · macOS \(ProcessInfo.processInfo.operatingSystemVersionString)
+        Shared folder: \(FinderPlusPaths.sharedRoot.path)
+        Cloud folders: \(CloudStorageLocations.discover().joined(separator: ", "))
+        \(diagnostics.report)
+        """
+    }
+
+    private func reload() {
+        diagnostics = ExtensionDiagnostics.load()
+        copied = false
     }
 }
