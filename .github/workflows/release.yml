@@ -1,15 +1,20 @@
 name: Release
 
-# Builds a downloadable FinderPlus.dmg on an Apple Silicon runner.
-# - Manual run (Actions › Release › Run workflow): the DMG is attached to the run as an artifact.
-# - Pushing a tag like v0.1.0: the DMG is also published on the GitHub Releases page.
+# Builds a downloadable FinderPlus.dmg on an Apple Silicon runner and publishes it as the GitHub
+# release "v<MARKETING_VERSION>" (from Config/Base.xcconfig). The release and its tag are created
+# by this workflow; a later run for the same version replaces the DMG.
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     tags: ["v*"]
 
 permissions:
   contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: true
 
 jobs:
   dmg:
@@ -22,14 +27,20 @@ jobs:
         run: swift test --package-path Packages/FinderPlusKit
       - name: Build DMG (arm64, ad-hoc signed)
         run: scripts/make-dmg.sh
+      - name: Read version
+        id: version
+        run: echo "value=$(sed -n 's/^MARKETING_VERSION *= *//p' Config/Base.xcconfig)" >> "$GITHUB_OUTPUT"
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: FinderPlus-arm64-dmg
           path: dist/*.dmg
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.version.outputs.value }}
+          target_commitish: ${{ github.sha }}
+          name: FinderPlus ${{ steps.version.outputs.value }} (Apple Silicon)
+          prerelease: true
           files: dist/*.dmg
           body_path: docs/INSTALL.md
