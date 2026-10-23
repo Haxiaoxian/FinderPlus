@@ -119,38 +119,51 @@ public final class ProcessRunner: Sendable {
         process.standardError = errors
 
         let collector = OutputCollector(onLine: onOutputLine)
-        output.fileHandleForReading.readabilityHandler = { handle in
-            collector.append(handle.availableData, toError: false)
-        }
-        errors.fileHandleForReading.readabilityHandler = { handle in
-            collector.append(handle.availableData, toError: true)
+        let timeoutState = TimeoutFlag()
+        // Each pipe is drained on its own thread until EOF; the result is assembled only after the
+        // process has exited *and* both pipes are fully read, so no output can be lost.
+        let drained = DispatchGroup()
+        // Registered before launch, so a process that exits instantly still waits for its output.
+        drained.enter()
+        drained.enter()
+        func drain(_ handle: FileHandle, toError: Bool) {
+            DispatchQueue.global(qos: .userInitiated).async {
+                while true {
+                    let data = handle.availableData
+                    if data.isEmpty { break }
+                    collector.append(data, toError: toError)
+                }
+                drained.leave()
+            }
         }
 
-        let timeoutState = TimeoutFlag()
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<ProcessResult, Error>) in
                 process.terminationHandler = { finished in
-                    output.fileHandleForReading.readabilityHandler = nil
-                    errors.fileHandleForReading.readabilityHandler = nil
-                    collector.append(output.fileHandleForReading.readDataToEndOfFile(), toError: false)
-                    collector.append(errors.fileHandleForReading.readDataToEndOfFile(), toError: true)
-                    if timeoutState.isSet, let timeout {
-                        continuation.resume(throwing: ProcessRunnerError.timedOut(timeout))
-                        return
+                    drained.notify(queue: .global()) {
+                        if timeoutState.isSet, let timeout {
+                            continuation.resume(throwing: ProcessRunnerError.timedOut(timeout))
+                            return
+                        }
+                        let (stdout, stderr) = collector.finish()
+                        continuation.resume(returning: ProcessResult(exitCode: finished.terminationStatus,
+                                                                     standardOutput: stdout, standardError: stderr))
                     }
-                    let (stdout, stderr) = collector.finish()
-                    continuation.resume(returning: ProcessResult(exitCode: finished.terminationStatus,
-                                                                 standardOutput: stdout, standardError: stderr))
                 }
                 do {
                     try process.run()
                 } catch {
                     process.terminationHandler = nil
-                    output.fileHandleForReading.readabilityHandler = nil
-                    errors.fileHandleForReading.readabilityHandler = nil
+                    drained.leave()
+                    drained.leave()
                     continuation.resume(throwing: error)
                     return
                 }
+                // Our copies of the write ends must be closed, or the readers would never see EOF.
+                try? output.fileHandleForWriting.close()
+                try? errors.fileHandleForWriting.close()
+                drain(output.fileHandleForReading, toError: false)
+                drain(errors.fileHandleForReading, toError: true)
                 if let timeout {
                     DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
                         if process.isRunning {
@@ -193,7 +206,9 @@ private final class OutputCollector: @unchecked Sendable {
     private let lock = NSLock()
     private var stdout = Data()
     private var stderr = Data()
-    private var pendingLine = Data()
+    /// Incomplete trailing line of each stream, kept apart so stdout and stderr never splice.
+    private var pendingOutput = Data()
+    private var pendingError = Data()
     private let onLine: (@Sendable (String) -> Void)?
 
     init(onLine: (@Sendable (String) -> Void)?) {
@@ -206,22 +221,32 @@ private final class OutputCollector: @unchecked Sendable {
         lock.withLock {
             if toError { stderr.append(data) } else { stdout.append(data) }
             guard onLine != nil else { return }
-            pendingLine.append(data)
-            while let newline = pendingLine.firstIndex(of: 0x0A) {
-                let lineData = pendingLine[pendingLine.startIndex..<newline]
-                lines.append(String(decoding: lineData, as: UTF8.self))
-                pendingLine.removeSubrange(pendingLine.startIndex...newline)
+            if toError {
+                lines = Self.extractLines(from: &pendingError, appending: data)
+            } else {
+                lines = Self.extractLines(from: &pendingOutput, appending: data)
             }
         }
         lines.forEach { onLine?($0) }
     }
 
+    private static func extractLines(from buffer: inout Data, appending data: Data) -> [String] {
+        buffer.append(data)
+        var lines: [String] = []
+        while let newline = buffer.firstIndex(of: 0x0A) {
+            lines.append(String(decoding: buffer[buffer.startIndex..<newline], as: UTF8.self))
+            buffer.removeSubrange(buffer.startIndex...newline)
+        }
+        return lines
+    }
+
     func finish() -> (String, String) {
         lock.withLock {
-            if !pendingLine.isEmpty {
-                onLine?(String(decoding: pendingLine, as: UTF8.self))
-                pendingLine.removeAll()
+            for remainder in [pendingOutput, pendingError] where !remainder.isEmpty {
+                onLine?(String(decoding: remainder, as: UTF8.self))
             }
+            pendingOutput.removeAll()
+            pendingError.removeAll()
             return (String(decoding: stdout, as: UTF8.self), String(decoding: stderr, as: UTF8.self))
         }
     }

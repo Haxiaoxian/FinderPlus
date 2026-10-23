@@ -142,6 +142,24 @@ final class ProcessRunnerTests: XCTestCase {
         XCTAssertEqual(result.standardError, "err\n")
     }
 
+    /// Regression test: output of short-lived processes used to be lost occasionally.
+    func testNeverLosesOutputOfFastProcesses() async throws {
+        let runner = ProcessRunner()
+        for index in 0..<200 {
+            let result = try await runner.run(URL(fileURLWithPath: "/bin/echo"), arguments: ["run-\(index)"])
+            XCTAssertEqual(result.standardOutput, "run-\(index)\n")
+        }
+    }
+
+    func testStreamsLargeOutputAndLines() async throws {
+        let runner = ProcessRunner()
+        let lines = LineCounter()
+        let result = try await runner.run(URL(fileURLWithPath: "/usr/bin/seq"), arguments: ["1", "50000"],
+                                          onOutputLine: { _ in lines.increment() })
+        XCTAssertEqual(result.standardOutput.split(separator: "\n").count, 50000)
+        XCTAssertEqual(lines.value, 50000)
+    }
+
     func testArgumentsAreNotInterpretedByAShell() async throws {
         let runner = ProcessRunner()
         let result = try await runner.run(URL(fileURLWithPath: "/bin/echo"), arguments: ["$(whoami)", "; ls"])
@@ -157,4 +175,11 @@ final class ProcessRunnerTests: XCTestCase {
             XCTAssertTrue(error is ProcessRunnerError)
         }
     }
+}
+
+final class LineCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var value: Int { lock.withLock { count } }
+    func increment() { lock.withLock { count += 1 } }
 }
