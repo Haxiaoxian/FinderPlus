@@ -14,11 +14,22 @@ struct OverviewView: View {
 
                 extensionCard
 
-                HStack(spacing: 16) {
-                    statCard(HostStrings.enabledModules.localized,
-                             "\(model.modules.filter { model.isEnabled($0) }.count) / \(model.modules.count)", "puzzlepiece.extension", .blue)
-                    statCard(HostStrings.menuItems.localized, "\(model.snapshot.items.count)", "contextualmenu.and.cursorarrow", .indigo)
-                    statCard(HostStrings.runningTasks.localized, "\(model.tasks.running.count)", "clock", .orange)
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text(HostStrings.dashboardModules.localized).font(.headline)
+                            Text("\(model.modules.filter { model.isEnabled($0) }.count) / \(model.modules.count)")
+                                .font(.callout).foregroundStyle(.secondary).monospacedDigit()
+                            Spacer()
+                            Button(HostStrings.moduleCenter.localized) { model.selection = .modules }.buttonStyle(.link)
+                        }
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 12)], spacing: 8) {
+                            ForEach(model.modules, id: \.id) { module in
+                                DashboardModuleTile(module: module)
+                            }
+                        }
+                    }
+                    .padding(6)
                 }
 
                 GroupBox {
@@ -64,17 +75,46 @@ struct OverviewView: View {
         }
     }
 
-    private func statCard(_ title: String, _ value: String, _ symbol: String, _ color: Color) -> some View {
-        GroupBox {
-            HStack {
-                Image(systemName: symbol).font(.title2).foregroundStyle(color)
-                VStack(alignment: .leading) {
-                    Text(value).font(.title2.bold()).monospacedDigit()
-                    Text(title).font(.caption).foregroundStyle(.secondary)
+}
+
+/// One module on the home dashboard: icon, name, on/off switch; clicking opens its page.
+private struct DashboardModuleTile: View {
+    @Environment(AppModel.self) private var model
+    let module: FinderPlusModule
+
+    var body: some View {
+        let manifest = module.manifest
+        let enabled = model.isEnabled(module)
+        HStack(spacing: 10) {
+            Button { model.selection = .module(module.id) } label: {
+                HStack(spacing: 10) {
+                    ModuleIconView(symbol: manifest.icon, size: 28, tint: enabled ? manifest.category.tint : .gray)
+                    Text(manifest.name.localized)
+                        .foregroundStyle(enabled ? .primary : .secondary)
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
                 }
-                Spacer()
+                .contentShape(Rectangle())
             }
-            .padding(6)
+            .buttonStyle(.plain)
+            Toggle("", isOn: Binding(
+                get: { model.isEnabled(module) },
+                set: { newValue in
+                    // Experimental modules are switched on from their own page, which explains the risk.
+                    if newValue, manifest.stability == .experimental {
+                        model.selection = .module(module.id)
+                    } else {
+                        model.setEnabled(module, newValue)
+                    }
+                }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .labelsHidden()
+            .disabled(manifest.kind == .scriptPackage && !model.isTrusted(module))
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 8).fill(.quaternary.opacity(0.5)))
     }
 }

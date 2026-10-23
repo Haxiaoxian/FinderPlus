@@ -12,15 +12,22 @@ enum HostStrings {
     static let showMainWindow = t("FinderPlus Window", "FinderPlus 主窗口", "FinderPlus 창")
     static let openApp = t("Open FinderPlus", "打开 FinderPlus", "FinderPlus 열기")
     static let quitApp = t("Quit FinderPlus", "退出 FinderPlus", "FinderPlus 종료")
-    static let overview = t("Overview", "总览", "개요")
-    static let moduleCenter = t("Modules", "模块中心", "모듈")
+    static let overview = t("Home", "主页", "홈")
+    static let moduleCenter = t("Modules & Packages", "模块与功能包", "모듈 및 패키지")
     static let menuManager = t("Context Menu", "右键菜单管理", "컨텍스트 메뉴")
     static let templates = t("Templates", "模板管理", "템플릿")
     static let icons = t("Icons", "图标管理", "아이콘")
     static let dependencies = t("Dependencies", "依赖管理", "종속성")
     static let taskCenter = t("Tasks", "任务中心", "작업")
     static let general = t("General", "通用设置", "일반")
-    static let moduleSettings = t("Module Settings", "模块设置", "모듈 설정")
+    static let modulesSection = t("Modules", "模块", "모듈")
+    static let manageSection = t("Manage", "管理", "관리")
+    static let moduleOff = t("Off", "已关闭", "꺼짐")
+    static let enableModule = t("Enable {name}", "启用{name}", "{name} 사용")
+    static let moduleOffHint = t("Turn this module on to use it in Finder and change its settings.",
+                                 "开启该模块后，即可在 Finder 中使用并修改它的设置。",
+                                 "이 모듈을 켜면 Finder에서 사용하고 설정을 변경할 수 있습니다.")
+    static let dashboardModules = t("Modules", "模块", "모듈")
     static let error = t("Something went wrong", "出现问题", "문제가 발생했습니다")
     static let ok = t("OK", "好", "확인")
     static let cancel = t("Cancel", "取消", "취소")
@@ -28,9 +35,7 @@ enum HostStrings {
 
     // Overview
     static let tagline = t("A modular, local-first toolbox for Finder.", "模块化、本地优先的 Finder 增强平台。", "모듈식, 로컬 우선 Finder 도구 상자.")
-    static let enabledModules = t("Enabled modules", "已启用模块", "활성 모듈")
     static let menuItems = t("Menu items", "菜单项", "메뉴 항목")
-    static let runningTasks = t("Running tasks", "运行中的任务", "실행 중인 작업")
     static let recentTasks = t("Recent tasks", "最近任务", "최근 작업")
     static let showAll = t("Show all", "查看全部", "모두 보기")
     static let noTasksYet = t("No tasks yet. Right-click in Finder and choose FinderPlus.", "暂无任务。在 Finder 中右键并选择 FinderPlus 即可开始。",

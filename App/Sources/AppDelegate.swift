@@ -60,9 +60,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// is how the user can always see it is running, reopen it, or quit it.
     private func installStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        let image = NSImage(systemSymbolName: "puzzlepiece.extension", accessibilityDescription: "FinderPlus")
-        image?.isTemplate = true
-        item.button?.image = image
+        item.button?.image = Self.menuBarIcon()
+        item.button?.imageScaling = .scaleProportionallyDown
         item.button?.toolTip = "FinderPlus"
         let menu = NSMenu()
         menu.addItem(withTitle: HostStrings.openApp.localized, action: #selector(statusOpen), keyEquivalent: "").target = self
@@ -71,6 +70,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         menu.addItem(withTitle: HostStrings.quitApp.localized, action: #selector(statusQuit), keyEquivalent: "q").target = self
         item.menu = menu
         statusItem = item
+    }
+
+    /// The app icon at menu bar size. The icon artwork has a transparent margin, so it is drawn
+    /// slightly enlarged to match the visual size of neighbouring menu bar icons.
+    static func menuBarIcon() -> NSImage {
+        let size = NSSize(width: 18, height: 18)
+        let appIcon = NSApp.applicationIconImage ?? NSImage(named: NSImage.applicationIconName) ?? NSImage()
+        let image = NSImage(size: size, flipped: false) { rect in
+            appIcon.draw(in: rect.insetBy(dx: -1.5, dy: -1.5), from: .zero, operation: .sourceOver, fraction: 1)
+            return true
+        }
+        image.isTemplate = false
+        image.accessibilityDescription = "FinderPlus"
+        return image
     }
 
     @objc private func statusOpen() {
