@@ -10,6 +10,8 @@ enum HostStrings {
     // App & navigation
     static let settingsMenu = t("Settings…", "设置…", "설정…")
     static let showMainWindow = t("FinderPlus Window", "FinderPlus 主窗口", "FinderPlus 창")
+    static let openApp = t("Open FinderPlus", "打开 FinderPlus", "FinderPlus 열기")
+    static let quitApp = t("Quit FinderPlus", "退出 FinderPlus", "FinderPlus 종료")
     static let overview = t("Overview", "总览", "개요")
     static let moduleCenter = t("Modules", "模块中心", "모듈")
     static let menuManager = t("Context Menu", "右键菜单管理", "컨텍스트 메뉴")

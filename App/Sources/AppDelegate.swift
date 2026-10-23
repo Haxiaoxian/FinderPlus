@@ -10,6 +10,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var mainWindow: NSWindow?
     private var moduleWindows: [NSWindow] = []
     private var finishedLaunching = false
+    private var statusItem: NSStatusItem?
+    private var updateTimer: Timer?
+    /// Build number this process was launched from; compared with the bundle on disk to detect updates.
+    private let runningBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         model = AppModel()
@@ -22,8 +26,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         installURLHandler()
         MacSystemServices.requestNotificationAuthorization()
 
+        installStatusItem()
+        startUpdateWatcher()
+
         let launchedNormally = notification.userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool ?? true
-        if launchedNormally {
+        let relaunchedInBackground = CommandLine.arguments.contains(Self.backgroundArgument)
+        if launchedNormally, !relaunchedInBackground {
             showMainWindow()
         } else {
             NSApp.setActivationPolicy(.accessory)
@@ -37,8 +45,79 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // Reopening after the user replaced FinderPlus.app must start the new version, not show
+        // the old one that kept running in the background.
+        if relaunchIfUpdated(inBackground: false) { return false }
         showMainWindow()
         return false
+    }
+
+    // MARK: Menu bar item & updates
+
+    static let backgroundArgument = "--finderplus-background"
+
+    /// Menu bar icon: the app keeps running without a Dock icon after its window closes, so this
+    /// is how the user can always see it is running, reopen it, or quit it.
+    private func installStatusItem() {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        let image = NSImage(systemSymbolName: "puzzlepiece.extension", accessibilityDescription: "FinderPlus")
+        image?.isTemplate = true
+        item.button?.image = image
+        item.button?.toolTip = "FinderPlus"
+        let menu = NSMenu()
+        menu.addItem(withTitle: HostStrings.openApp.localized, action: #selector(statusOpen), keyEquivalent: "").target = self
+        menu.addItem(withTitle: HostStrings.taskCenter.localized, action: #selector(statusTasks), keyEquivalent: "").target = self
+        menu.addItem(.separator())
+        menu.addItem(withTitle: HostStrings.quitApp.localized, action: #selector(statusQuit), keyEquivalent: "q").target = self
+        item.menu = menu
+        statusItem = item
+    }
+
+    @objc private func statusOpen() {
+        if relaunchIfUpdated(inBackground: false) { return }
+        showMainWindow()
+    }
+
+    @objc private func statusTasks() {
+        if relaunchIfUpdated(inBackground: false) { return }
+        showMainWindow(section: .tasks)
+    }
+
+    @objc private func statusQuit() {
+        NSApp.terminate(nil)
+    }
+
+    private func startUpdateWatcher() {
+        let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.model.tasks.running.isEmpty else { return }
+                let windowsOpen = (self.mainWindow?.isVisible ?? false) || !self.moduleWindows.isEmpty
+                if !windowsOpen { _ = self.relaunchIfUpdated(inBackground: true) }
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        updateTimer = timer
+    }
+
+    /// If FinderPlus.app on disk is a different build than this process, starts the new build and quits.
+    private func relaunchIfUpdated(inBackground: Bool) -> Bool {
+        let plist = Bundle.main.bundleURL.appendingPathComponent("Contents/Info.plist")
+        guard let info = NSDictionary(contentsOf: plist),
+              let diskBuild = info["CFBundleVersion"] as? String,
+              let runningBuild, diskBuild != runningBuild else { return false }
+        let relaunch = Process()
+        relaunch.executableURL = URL(fileURLWithPath: "/bin/sh")
+        // Wait for this process to exit, then open the new build (in the background if requested).
+        relaunch.arguments = ["-c", "while kill -0 \"$1\" 2>/dev/null; do sleep 0.2; done; "
+            + (inBackground ? "/usr/bin/open -g \"$2\" --args \"$3\"" : "/usr/bin/open \"$2\""),
+            "relaunch", String(ProcessInfo.processInfo.processIdentifier), Bundle.main.bundlePath, Self.backgroundArgument]
+        do {
+            try relaunch.run()
+        } catch {
+            return false
+        }
+        NSApp.terminate(nil)
+        return true
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
