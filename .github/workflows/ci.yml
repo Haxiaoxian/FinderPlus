@@ -6,50 +6,46 @@ on:
   pull_request:
   workflow_dispatch:
 
-jobs:
-  package-tests:
-    name: FinderPlusKit tests (Apple Silicon)
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v4
-      - name: Show toolchain
-        run: xcodebuild -version && swift --version && uname -m
-      - name: Run unit tests
-        run: swift test --package-path Packages/FinderPlusKit
+permissions:
+  contents: write
 
-  app-arm64:
-    name: Build app (arm64)
+jobs:
+  build:
+    name: Test and build (Apple Silicon)
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate project
-        run: xcodegen generate
-      - name: Build
+      - uses: actions/checkout@v5
+      - name: Toolchain
         run: |
+          mkdir -p ci-logs
+          { xcodebuild -version; swift --version; uname -m; } 2>&1 | tee ci-logs/toolchain.log
+      - name: Unit tests
+        run: |
+          set -o pipefail
+          swift test --package-path Packages/FinderPlusKit 2>&1 | tee ci-logs/tests.log
+      - name: Build app (arm64)
+        if: always()
+        run: |
+          set -o pipefail
+          brew install xcodegen >/dev/null
+          xcodegen generate 2>&1 | tee ci-logs/xcodegen.log
           xcodebuild -project FinderPlus.xcodeproj -scheme FinderPlus -configuration Release \
             -destination 'generic/platform=macOS' ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
-            CODE_SIGNING_ALLOWED=NO -derivedDataPath build build
-      - name: Check architecture
-        run: lipo -archs build/Build/Products/Release/FinderPlus.app/Contents/MacOS/FinderPlus
-      - name: Upload unsigned app
-        uses: actions/upload-artifact@v4
-        with:
-          name: FinderPlus-arm64-unsigned
-          path: build/Build/Products/Release/FinderPlus.app
-
-  # Phase 2 — Intel support. Builds a Universal binary; kept non-blocking until Intel is verified.
-  app-universal:
-    name: Build app (Universal, phase 2)
-    runs-on: macos-15
-    continue-on-error: true
-    if: github.event_name == 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-      - run: brew install xcodegen && xcodegen generate
-      - run: |
-          xcodebuild -project FinderPlus.xcodeproj -scheme FinderPlus -configuration Release \
-            -destination 'generic/platform=macOS' ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
-            CODE_SIGNING_ALLOWED=NO -derivedDataPath build build
-      - run: lipo -archs build/Build/Products/Release/FinderPlus.app/Contents/MacOS/FinderPlus
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= FP_ENTITLEMENTS_VARIANT=-AdHoc \
+            -derivedDataPath build build 2>&1 | tee ci-logs/app.log
+          lipo -archs build/Build/Products/Release/FinderPlus.app/Contents/MacOS/FinderPlus
+      - name: Summarize errors
+        if: always()
+        run: |
+          grep -hE "(error|warning: unreachable|fatal error):" ci-logs/*.log | sort -u > ci-logs/errors.txt || true
+          grep -hE "^(Test Case .* failed|.*XCTAssert.*failed)" ci-logs/tests.log | sort -u > ci-logs/test-failures.txt || true
+          head -40 ci-logs/errors.txt | while IFS= read -r line; do echo "::error::$line"; done
+      - name: Publish logs to ci-logs branch
+        if: always()
+        run: |
+          cd ci-logs
+          git init -q -b ci-logs
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A && git commit -qm "Logs for run ${{ github.run_id }} (${{ github.sha }})"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ci-logs
