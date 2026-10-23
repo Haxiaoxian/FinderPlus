@@ -173,6 +173,10 @@ final class MenuSnapshotTests: XCTestCase {
         XCTAssertEqual(MenuResolver.resolve(snapshot, for: background).allItems.map(\.actionID), ["copy"])
 
         let data = try FinderPlusJSON.encoder().encode(snapshot)
-        XCTAssertEqual(try FinderPlusJSON.decoder().decode(MenuSnapshot.self, from: data), snapshot)
+        var decoded = try FinderPlusJSON.decoder().decode(MenuSnapshot.self, from: data)
+        // ISO 8601 drops sub-second precision; everything else must survive the round trip.
+        XCTAssertEqual(decoded.generatedAt.timeIntervalSince1970, snapshot.generatedAt.timeIntervalSince1970, accuracy: 1)
+        decoded.generatedAt = snapshot.generatedAt
+        XCTAssertEqual(decoded, snapshot)
     }
 }
