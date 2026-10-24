@@ -51,6 +51,20 @@ final class BuiltinModuleContractTests: XCTestCase {
         XCTAssertTrue(python.isSuperset(of: ["runPython", "open.vs-code", "open.coteditor", "copyPath"]))
         XCTAssertFalse(python.contains("export"))
 
+        // Editors only appear for files they can open as text.
+        for name in ["Installer.dmg", "photo.jpg", "archive.zip", "movie.mp4", "report.docx", "slides.pdf"] {
+            let found = actions(file(name))
+            XCTAssertFalse(found.contains("open.vs-code"), name)
+            XCTAssertFalse(found.contains("open.coteditor"), name)
+            XCTAssertTrue(found.contains("copyPath"), name)
+        }
+        for name in ["Makefile", "app.ts", "main.swift", "config.yaml", "data.json", "index.html", "query.sql", ".gitignore"] {
+            XCTAssertTrue(actions(file(name)).contains("open.vs-code"), name)
+        }
+        let app = actions(FinderSelection(context: .items, items: [SelectedItem(url: URL(fileURLWithPath: "/Applications/Foo.app"),
+                                                                                    kind: .package)], container: nil))
+        XCTAssertFalse(app.contains("open.vs-code"))
+
         let markdown = actions(file("notes.md"))
         XCTAssertTrue(markdown.isSuperset(of: ["export", "open.vs-code", "copyPath"]))
 
@@ -206,6 +220,32 @@ extension PathFormatterTests {
                                                       settings: settings(["wrap": "double", "separator": "comma"])),
                                      context: makeContext(system))
         XCTAssertEqual(system.pasteboard, "\"My File.txt\", \"Folder\"")
+    }
+}
+
+final class QuickOpenRuleTests: XCTestCase {
+    func testLegacyEntriesKeepTheirMeaning() {
+        let module = QuickOpenModule()
+        var settings = ModuleSettings(schema: module.manifest.settings)
+        settings["apps"] = [
+            ["name": "Old", "bundleID": "x", "extensions": "", "files": true, "folders": false],
+            ["name": "Picky", "bundleID": "y", "extensions": "md, txt", "files": true, "folders": false],
+        ]
+        let targets = module.appTargets(settings: settings, resolve: false)
+        XCTAssertEqual(targets.map(\.fileTypes), ["text", "custom"])
+        let dmg = SelectedItem(url: URL(fileURLWithPath: "/tmp/a.dmg"), kind: .file)
+        let md = SelectedItem(url: URL(fileURLWithPath: "/tmp/a.md"), kind: .file)
+        let py = SelectedItem(url: URL(fileURLWithPath: "/tmp/a.py"), kind: .file)
+        XCTAssertFalse(targets[0].rule.matches(item: dmg))
+        XCTAssertTrue(targets[0].rule.matches(item: py))
+        XCTAssertTrue(targets[1].rule.matches(item: md))
+        XCTAssertFalse(targets[1].rule.matches(item: py))
+    }
+
+    func testAllFilesStillPossible() {
+        let target = QuickOpenModule.AppTarget(slug: "a", name: "A", applicationURL: nil, fileTypes: "all", extensions: [],
+                                               files: true, folders: true)
+        XCTAssertTrue(target.rule.matches(item: SelectedItem(url: URL(fileURLWithPath: "/tmp/a.dmg"), kind: .file)))
     }
 }
 

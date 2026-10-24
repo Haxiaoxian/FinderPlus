@@ -29,12 +29,31 @@ public final class QuickOpenModule: FinderPlusModule {
 
     public init() {}
 
-    static func app(_ name: String, bundleID: String, extensions: String = "", files: Bool = true, folders: Bool) -> SettingValue {
+    static func app(_ name: String, bundleID: String, fileTypes: String = "text", extensions: String = "",
+                    files: Bool = true, folders: Bool) -> SettingValue {
         .object([
-            "name": .string(name), "bundleID": .string(bundleID), "application": .string(""),
+            "name": .string(name), "bundleID": .string(bundleID), "application": .string(""), "fileTypes": .string(fileTypes),
             "extensions": .string(extensions), "files": .bool(files), "folders": .bool(folders), "enabled": .bool(true),
         ])
     }
+
+    /// Types an editor can open as text. Matched by conformance, so every kind of source code,
+    /// script, markup and data text macOS knows about is included.
+    static let textTypeIdentifiers = [
+        "public.text", "public.source-code", "public.script", "public.shell-script", "public.json", "public.xml",
+        "public.yaml", "public.comma-separated-values-text", "public.log",
+    ]
+
+    /// Text formats macOS does not know as text (or maps to something else, like `.ts` → MPEG
+    /// transport stream), plus files without an extension (`Makefile`, `.gitignore`, `LICENSE`).
+    static let textExtensions: Set<String> = [
+        "", "md", "markdown", "mdx", "txt", "log", "env", "ini", "cfg", "conf", "toml", "lock", "properties",
+        "r", "rmd", "qmd", "ipynb", "vue", "svelte", "astro", "ts", "tsx", "jsx", "mts", "cts", "go", "rs", "kt", "kts",
+        "dart", "lua", "sql", "graphql", "gql", "proto", "tf", "tfvars", "hcl", "gradle", "dockerfile", "makefile", "cmake",
+        "bat", "cmd", "ps1", "tex", "bib", "sty", "cls", "csv", "tsv", "srt", "vtt", "nix", "zig", "jl", "ex", "exs", "erl",
+        "hs", "ml", "scala", "clj", "v", "sv", "vhd", "asm", "s", "patch", "diff", "plist", "xcconfig", "strings",
+        "entitlements", "storyboard", "xib", "svg", "csproj", "sln", "editorconfig", "gitignore", "gitattributes",
+    ]
 
     static let workingDirectoryOptions = [
         SettingOption("fileFolder", LocalizedText(en: "Folder of the script", zhHans: "脚本所在文件夹", ko: "스크립트가 있는 폴더")),
@@ -55,16 +74,26 @@ public final class QuickOpenModule: FinderPlusModule {
         supportedTypes: ["*", "py", "R", "folder"],
         settings: SettingsSchema(sections: [
             SettingsSection(id: "apps", title: LocalizedText(en: "Open with", zhHans: "打开方式", ko: "다음으로 열기"),
-                            footer: LocalizedText(en: "Extensions are comma separated (e.g. md, py, json). Leave empty for all files.",
-                                                  zhHans: "扩展名用逗号分隔（如 md, py, json），留空表示所有文件。",
-                                                  ko: "확장자는 쉼표로 구분합니다(예: md, py, json). 비워 두면 모든 파일에 적용됩니다."),
+                            footer: LocalizedText(en: "“Text and code files” covers source code, scripts, Markdown, JSON, CSV, config files and files without an extension, and hides the item for disk images, archives, images, videos, Office documents and apps.",
+                                                  zhHans: "“文本和代码文件”涵盖源代码、脚本、Markdown、JSON、CSV、配置文件及无扩展名文件；选中 dmg、压缩包、图片、视频、Office 文档、应用程序等时不显示该菜单项。",
+                                                  ko: "“텍스트 및 코드 파일”은 소스 코드, 스크립트, Markdown, JSON, CSV, 설정 파일, 확장자 없는 파일을 포함하며 디스크 이미지, 압축 파일, 이미지, 동영상, Office 문서, 앱에는 표시하지 않습니다."),
                             fields: [
                 .objectList(Key.apps, LocalizedText(en: "Applications", zhHans: "应用程序", ko: "응용 프로그램"), itemFields: [
                     .text("name", LocalizedText(en: "Name", zhHans: "名称", ko: "이름")),
                     .path("application", LocalizedText(en: "Application", zhHans: "应用程序", ko: "응용 프로그램"), kind: .application,
                           placeholder: LocalizedText(en: "Found by bundle identifier", zhHans: "按 Bundle ID 自动查找", ko: "번들 ID로 찾기")),
                     .text("bundleID", LocalizedText(en: "Bundle identifier", zhHans: "Bundle ID", ko: "번들 ID")),
-                    .text("extensions", LocalizedText(en: "File extensions", zhHans: "文件扩展名", ko: "파일 확장자")),
+                    .choice("fileTypes", LocalizedText(en: "Show for", zhHans: "适用文件", ko: "표시 대상"), options: [
+                        SettingOption("text", LocalizedText(en: "Text and code files", zhHans: "文本和代码文件", ko: "텍스트 및 코드 파일")),
+                        SettingOption("custom", LocalizedText(en: "Only these extensions", zhHans: "仅指定扩展名", ko: "지정한 확장자만")),
+                        SettingOption("all", LocalizedText(en: "All files", zhHans: "所有文件", ko: "모든 파일")),
+                    ], default: "text"),
+                    .text("extensions", LocalizedText(en: "Extensions", zhHans: "扩展名", ko: "확장자"),
+                          placeholder: LocalizedText(stringLiteral: "md, py, json"),
+                          help: LocalizedText(en: "Comma separated. With “Text and code files” these are added to the built-in list.",
+                                              zhHans: "用逗号分隔。选择“文本和代码文件”时，这些扩展名会追加到内置列表中。",
+                                              ko: "쉼표로 구분합니다. “텍스트 및 코드 파일”에서는 기본 목록에 추가됩니다."),
+                          visibleWhen: SettingCondition(key: "fileTypes", equals: ["text", "custom"])),
                     .toggle("files", LocalizedText(en: "Show for files", zhHans: "对文件显示", ko: "파일에 표시"), default: true),
                     .toggle("folders", LocalizedText(en: "Show for folders", zhHans: "对文件夹显示", ko: "폴더에 표시"), default: true),
                     .toggle("enabled", LocalizedText(en: "Enabled", zhHans: "启用", ko: "사용"), default: true),
@@ -154,9 +183,30 @@ public final class QuickOpenModule: FinderPlusModule {
         var slug: String
         var name: String
         var applicationURL: URL?
-        var extensions: Set<String>?
+        /// `text`, `custom` or `all`.
+        var fileTypes: String
+        var extensions: Set<String>
         var files: Bool
         var folders: Bool
+
+        /// Where "Open with …" appears. Folders always match when allowed; the type filter
+        /// applies to files only. Apps and other bundles count as files only for "All files".
+        var rule: MenuRule {
+            var kinds: Set<ItemKind> = []
+            if files { kinds.formUnion(fileTypes == "all" ? [.file, .package] : [.file]) }
+            if folders { kinds.insert(.folder) }
+            let contexts: Set<MenuContextKind> = folders ? [.items, .container] : [.items]
+            switch fileTypes {
+            case "all":
+                return MenuRule(contexts: contexts, itemKinds: kinds)
+            case "custom":
+                return MenuRule(contexts: contexts, itemKinds: kinds, extensions: extensions)
+            default:
+                return MenuRule(contexts: contexts, itemKinds: kinds,
+                                extensions: QuickOpenModule.textExtensions.union(extensions),
+                                typeIdentifiers: QuickOpenModule.textTypeIdentifiers)
+            }
+        }
     }
 
     func appTargets(settings: ModuleSettings, resolve: Bool = true) -> [AppTarget] {
@@ -178,7 +228,11 @@ public final class QuickOpenModule: FinderPlusModule {
             var slug = name.lowercased().map { $0.isLetter || $0.isNumber ? String($0) : "-" }.joined()
             while used.contains(slug) { slug += "-2" }
             used.insert(slug)
-            return AppTarget(slug: slug, name: name, applicationURL: url, extensions: extensions.isEmpty ? nil : extensions,
+            // Entries saved before "fileTypes" existed: an extension list meant "only these",
+            // an empty one meant "all files" — which showed editors for .dmg and the like, so it
+            // now means text and code files.
+            let fileTypes = object["fileTypes"]?.stringValue ?? (extensions.isEmpty ? "text" : "custom")
+            return AppTarget(slug: slug, name: name, applicationURL: url, fileTypes: fileTypes, extensions: extensions,
                              files: object["files"]?.boolValue ?? true, folders: object["folders"]?.boolValue ?? true)
         }
     }
@@ -191,12 +245,7 @@ public final class QuickOpenModule: FinderPlusModule {
         for (index, app) in appTargets(settings: settings).enumerated() {
             if hideMissing, app.applicationURL == nil { continue }
             guard app.files || app.folders else { continue }
-            var kinds: Set<ItemKind> = []
-            if app.files { kinds.formUnion([.file, .package]) }
-            if app.folders { kinds.insert(.folder) }
-            // Folders always match when allowed; the extension filter applies to files only.
-            let rule = MenuRule(contexts: app.folders ? [.items, .container] : [.items],
-                                itemKinds: kinds, extensions: app.extensions)
+            let rule = app.rule
             actions.append(ActionDescriptor(
                 id: "open.\(app.slug)",
                 title: LocalizedText(en: "Open with {app}", zhHans: "使用 {app} 打开", ko: "{app}(으)로 열기").replacing("app", with: app.name),
@@ -281,10 +330,9 @@ public final class QuickOpenModule: FinderPlusModule {
                 throw ModuleError.dependencyMissing(LocalizedText(en: "\(app.name) is not installed.", zhHans: "未安装 \(app.name)。",
                                                                   ko: "\(app.name)이(가) 설치되어 있지 않습니다.").localized)
             }
-            let urls = selection.targetURLs.filter { url in
-                guard let extensions = app.extensions else { return true }
-                return SelectedItem.inspect(url).kind == .folder || extensions.contains(url.pathExtension.lowercased())
-            }
+            // Same filter as the menu, so a mixed selection only sends what the app can open.
+            let rule = app.rule
+            let urls = selection.targetURLs.filter { rule.matches(item: SelectedItem.inspect($0)) }
             guard !urls.isEmpty else { return .none }
             try await context.system.open(urls, withApplicationAt: appURL)
             return .none
