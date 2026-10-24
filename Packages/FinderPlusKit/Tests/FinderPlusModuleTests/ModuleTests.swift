@@ -186,6 +186,29 @@ final class PathFormatterTests: XCTestCase {
     }
 }
 
+extension PathFormatterTests {
+    func testWrappingCharacters() {
+        XCTAssertEqual(PathFormatter.format(selection: selection, settings: settings(["wrap": "single", "separator": "space"])),
+                       "'/Users/me/My File.txt' '/Users/me/Folder'")
+        XCTAssertEqual(PathFormatter.format(selection: selection, settings: settings(["wrap": "double"])),
+                       "\"/Users/me/My File.txt\"\n\"/Users/me/Folder\"")
+        XCTAssertEqual(PathFormatter.decorate("it's.md", settings: settings(["wrap": "curlyDouble"])), "“it's.md”")
+        // Plain wrapping leaves the text untouched (no escaping).
+        XCTAssertEqual(PathFormatter.decorate("it's.md", settings: settings(["wrap": "single"])), "'it's.md'")
+        // Shell escaping takes precedence, so quotes are never doubled.
+        XCTAssertEqual(PathFormatter.decorate("a b", settings: settings(["wrap": "double", "quoting": "single"])), "'a b'")
+    }
+
+    func testNamesAreWrapped() async throws {
+        let system = MockSystemServices()
+        let module = PathToolsModule()
+        _ = try await module.perform(ActionInvocation(actionID: "copyName", selection: selection,
+                                                      settings: settings(["wrap": "double", "separator": "comma"])),
+                                     context: makeContext(system))
+        XCTAssertEqual(system.pasteboard, "\"My File.txt\", \"Folder\"")
+    }
+}
+
 final class ScriptRunPlannerTests: XCTestCase {
     let script = URL(fileURLWithPath: "/Users/me/My Project/src/run's.py")
 

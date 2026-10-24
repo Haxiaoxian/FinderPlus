@@ -9,6 +9,7 @@ public final class PathToolsModule: FinderPlusModule {
         static let separator = "separator"
         static let customSeparator = "customSeparator"
         static let quoting = "quoting"
+        static let wrap = "wrap"
         static let customTitle = "customTitle"
         static let extraActions = "extraActions"
         static let trailingSlashForFolders = "trailingSlashForFolders"
@@ -45,6 +46,18 @@ public final class PathToolsModule: FinderPlusModule {
                             SettingOption("double", LocalizedText(en: "Double quotes  \"/a b\"", zhHans: "双引号  \"/a b\"", ko: "큰따옴표  \"/a b\"")),
                             SettingOption("backslash", LocalizedText(en: "Backslashes  /a\\ b", zhHans: "反斜杠  /a\\ b", ko: "백슬래시  /a\\ b")),
                         ], default: "none"),
+                .choice(Key.wrap, LocalizedText(en: "Wrap each item in", zhHans: "包裹符号", ko: "각 항목 감싸기"),
+                        options: [
+                            SettingOption("none", LocalizedText(en: "Nothing", zhHans: "不包裹", ko: "감싸지 않음")),
+                            SettingOption("single", LocalizedText(en: "Single quotes  'name'", zhHans: "单引号  'name'", ko: "작은따옴표  'name'")),
+                            SettingOption("double", LocalizedText(en: "Double quotes  \"name\"", zhHans: "双引号  \"name\"", ko: "큰따옴표  \"name\"")),
+                            SettingOption("curlySingle", LocalizedText(en: "Curly single quotes  ‘name’", zhHans: "中文单引号  ‘name’", ko: "둥근 작은따옴표  ‘name’")),
+                            SettingOption("curlyDouble", LocalizedText(en: "Curly double quotes  “name”", zhHans: "中文双引号  “name”", ko: "둥근 큰따옴표  “name”")),
+                        ], default: "none",
+                        help: LocalizedText(en: "Applies to every copy item (path, name, parent folder, file URL). The text inside is left as is; use Shell escaping instead when pasting into Terminal.",
+                                            zhHans: "作用于所有复制项（路径、名称、所在文件夹、文件 URL），只在外侧加引号、不改动内容；若要粘贴到终端，请改用上方的“Shell 转义”。",
+                                            ko: "모든 복사 항목(경로, 이름, 상위 폴더, 파일 URL)에 적용됩니다. 내용은 그대로 두며, 터미널용이면 셸 이스케이프를 사용하세요."),
+                        visibleWhen: SettingCondition(key: Key.quoting, equals: ["none"])),
                 .toggle(Key.trailingSlashForFolders, LocalizedText(en: "Add trailing slash to folders", zhHans: "文件夹路径末尾加 /", ko: "폴더 경로 끝에 / 추가"),
                         default: false),
             ]),
@@ -93,14 +106,16 @@ public final class PathToolsModule: FinderPlusModule {
         case "copyPath":
             text = PathFormatter.format(selection: selection, settings: invocation.settings)
         case "copyName":
-            text = PathFormatter.join(selection.targetURLs.map(\.lastPathComponent), settings: invocation.settings)
+            text = PathFormatter.join(selection.targetURLs.map { PathFormatter.decorate($0.lastPathComponent, settings: invocation.settings) },
+                                      settings: invocation.settings)
         case "copyParent":
             let parents = selection.targetURLs.map { $0.deletingLastPathComponent().path }
             var unique: [String] = []
             for parent in parents where !unique.contains(parent) { unique.append(parent) }
-            text = PathFormatter.join(unique.map { PathFormatter.quote($0, settings: invocation.settings) }, settings: invocation.settings)
+            text = PathFormatter.join(unique.map { PathFormatter.decorate($0, settings: invocation.settings) }, settings: invocation.settings)
         case "copyURL":
-            text = PathFormatter.join(selection.targetURLs.map(\.absoluteString), settings: invocation.settings)
+            text = PathFormatter.join(selection.targetURLs.map { PathFormatter.decorate($0.absoluteString, settings: invocation.settings) },
+                                      settings: invocation.settings)
         default:
             throw ModuleError.unknownAction(invocation.actionID)
         }
@@ -126,15 +141,26 @@ public enum PathFormatter {
                 trailingSlash && item.kind == .folder ? item.path + "/" : item.path
             }
         }
-        return join(paths.map { quote($0, settings: settings) }, settings: settings)
+        return join(paths.map { decorate($0, settings: settings) }, settings: settings)
     }
 
-    public static func quote(_ path: String, settings: ModuleSettings) -> String {
+    /// Shell escaping when chosen (for Terminal); otherwise the plain wrapping characters, if any.
+    public static func decorate(_ value: String, settings: ModuleSettings) -> String {
         switch settings.string(PathToolsModule.Key.quoting) {
-        case "single": return "'" + path.replacingOccurrences(of: "'", with: "'\\''") + "'"
-        case "double": return ShellQuoting.doubleQuote(path)
-        case "backslash": return ShellQuoting.backslashEscape(path)
-        default: return path
+        case "single": return "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
+        case "double": return ShellQuoting.doubleQuote(value)
+        case "backslash": return ShellQuoting.backslashEscape(value)
+        default: return wrap(value, settings: settings)
+        }
+    }
+
+    static func wrap(_ value: String, settings: ModuleSettings) -> String {
+        switch settings.string(PathToolsModule.Key.wrap) {
+        case "single": return "'\(value)'"
+        case "double": return "\"\(value)\""
+        case "curlySingle": return "‘\(value)’"
+        case "curlyDouble": return "“\(value)”"
+        default: return value
         }
     }
 
