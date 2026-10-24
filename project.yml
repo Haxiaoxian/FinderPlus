@@ -34,6 +34,12 @@ targets:
       - target: FinderPlusFinderSync
         embed: true
         codeSign: true
+      # WebKit is linked only by this helper; it is copied next to the main executable.
+      - target: FinderPlusPDFRenderer
+        embed: true
+        codeSign: true
+        copy:
+          destination: executables
       - sdk: FinderSync.framework
     settings:
       base:
@@ -65,12 +71,24 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: FinderSyncExtension/FinderSyncExtension$(FP_ENTITLEMENTS_VARIANT).entitlements
         SKIP_INSTALL: YES
+  FinderPlusPDFRenderer:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Packages/FinderPlusKit/Sources/FinderPlusPDFRenderer
+        group: Helpers
+    settings:
+      base:
+        PRODUCT_NAME: FinderPlusPDFRenderer
+        PRODUCT_BUNDLE_IDENTIFIER: $(FP_BUNDLE_ID_PREFIX).PDFRenderer
+        SKIP_INSTALL: YES
 schemes:
   FinderPlus:
     build:
       targets:
         FinderPlus: all
         FinderPlusFinderSync: all
+        FinderPlusPDFRenderer: all
     run:
       config: Debug
     archive:

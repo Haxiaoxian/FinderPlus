@@ -98,8 +98,8 @@ public final class MarkdownPDFModule: FinderPlusModule {
         options.enableHighlight = settings.bool(Key.enableHighlight)
         options.extraCSS = settings.string(Key.extraCSS)
         let resources = Bundle.module.url(forResource: "web", withExtension: nil)
-        let page = PDFRenderer.PageSetup(paperSize: PDFRenderer.pageSize(named: settings.string(Key.pageSize)),
-                                         marginPoints: CGFloat(settings.int(Key.margin)) * 72 / 25.4)
+        let page = PDFRendererHelper.PageSetup(paperSize: PDFRendererHelper.pageSize(named: settings.string(Key.pageSize)),
+                                               marginPoints: CGFloat(settings.int(Key.margin)) * 72 / 25.4)
 
         var outputs: [URL] = []
         for (index, file) in files.enumerated() {
@@ -115,8 +115,7 @@ public final class MarkdownPDFModule: FinderPlusModule {
 
             let output = outputURL(for: file, settings: settings)
             try FileManager.default.createDirectory(at: output.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let renderer = await PDFRenderer()
-            try await renderer.render(htmlFile: scratch, to: output, page: page)
+            try await PDFRendererHelper.render(htmlFile: scratch, to: output, page: page, processes: context.processes)
             context.reporter.log("\(file.lastPathComponent) → \(output.path)")
             outputs.append(output)
         }

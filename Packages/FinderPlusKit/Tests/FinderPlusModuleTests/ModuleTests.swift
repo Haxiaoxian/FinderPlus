@@ -320,6 +320,25 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("hljs.highlightAll()"))
         XCTAssertTrue(html.contains("<base href=\"file:///docs/\">"))
     }
+
+    /// End to end through the helper process: the host must never need WebKit itself.
+    func testExportRunsInHelperProcess() async throws {
+        XCTAssertNotNil(PDFRendererHelper.locate(), "swift test builds FinderPlusPDFRenderer next to the module resources")
+        let folder = try temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let source = folder.appendingPathComponent("Notes.md")
+        try "# 标题\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\nInline $x^2$ math.\n".write(to: source, atomically: true, encoding: .utf8)
+        let module = MarkdownPDFModule()
+        let outcome = try await module.perform(
+            ActionInvocation(actionID: "export", parameters: [:],
+                             selection: FinderSelection(context: .items, items: [SelectedItem(url: source, kind: .file)], container: folder),
+                             settings: ModuleSettings(schema: module.manifest.settings)),
+            context: makeContext(MockSystemServices()))
+        let pdf = try XCTUnwrap(outcome.outputs.first)
+        XCTAssertEqual(pdf.lastPathComponent, "Notes.pdf")
+        let data = try Data(contentsOf: pdf)
+        XCTAssertEqual(data.prefix(5), Data("%PDF-".utf8))
+    }
 }
 
 final class SidebarBackendTests: XCTestCase {

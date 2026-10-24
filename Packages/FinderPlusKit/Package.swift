@@ -8,6 +8,8 @@
 //   FinderPlusUI              SwiftUI building blocks shared by the host and modules (schema-driven forms).
 //   FPxxx (Sources/Modules)   One target per feature module. Modules depend only on Core/UI, never on each other.
 //   FinderPlusBuiltinModules  The compile-time list of native modules shipped with the app.
+//   FinderPlusPDFRenderer     Helper executable (Contents/MacOS) that renders HTML to PDF with WebKit,
+//                             so the host process never links WebKit.
 
 import PackageDescription
 
@@ -76,10 +78,14 @@ let package = Package(
             dependencies: builtinModules.map { Target.Dependency(stringLiteral: "FP\($0)") }
         ),
 
+        // Built here so `swift test` can run Markdown → PDF end to end; the app embeds the same sources
+        // through the FinderPlusPDFRenderer target in project.yml.
+        .executableTarget(name: "FinderPlusPDFRenderer"),
+
         .testTarget(name: "FinderPlusCoreTests", dependencies: ["FinderPlusCore", "FinderPlusEngine"]),
         .testTarget(
             name: "FinderPlusModuleTests",
-            dependencies: ["FinderPlusCore", "FinderPlusEngine", "FinderPlusBuiltinModules"]
+            dependencies: ["FinderPlusCore", "FinderPlusEngine", "FinderPlusBuiltinModules", "FinderPlusPDFRenderer"]
                 + builtinModules.map { Target.Dependency(stringLiteral: "FP\($0)") }
         ),
     ]

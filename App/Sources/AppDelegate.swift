@@ -11,7 +11,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var moduleWindows: [NSWindow] = []
     private var finishedLaunching = false
     private var statusItem: NSStatusItem?
-    private var updateTimer: Timer?
+    private var updateWatcher: BundleUpdateWatcher?
+    /// Runs only while a new build is waiting for FinderPlus to become idle.
+    private var updateRetryTimer: Timer?
     /// Build number this process was launched from; compared with the bundle on disk to detect updates.
     private let runningBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
 
@@ -100,32 +102,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApp.terminate(nil)
     }
 
+    /// File-system events instead of a polling timer: FinderPlus stays asleep until the app on
+    /// disk actually changes.
     private func startUpdateWatcher() {
-        let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated {
-                guard let self, self.model.tasks.running.isEmpty else { return }
-                let windowsOpen = (self.mainWindow?.isVisible ?? false) || !self.moduleWindows.isEmpty
-                if !windowsOpen { _ = self.relaunchIfUpdated(inBackground: true) }
-            }
+        let watcher = BundleUpdateWatcher(bundleURL: Bundle.main.bundleURL) { [weak self] in
+            self?.relaunchInBackgroundWhenIdle()
         }
+        watcher.start()
+        updateWatcher = watcher
+    }
+
+    private var isUpdatePending: Bool {
+        guard let runningBuild, let diskBuild = BundleUpdateWatcher.diskBuild(of: Bundle.main.bundleURL) else { return false }
+        return diskBuild != runningBuild
+    }
+
+    /// Switches to a new build once nothing is running and no window is open; until then it
+    /// checks again every minute (and whenever a window closes).
+    private func relaunchInBackgroundWhenIdle() {
+        guard isUpdatePending else {
+            updateRetryTimer?.invalidate()
+            updateRetryTimer = nil
+            return
+        }
+        let idle = model.tasks.running.isEmpty && mainWindow == nil && moduleWindows.isEmpty
+        if idle, BundleUpdateWatcher.isComplete(Bundle.main.bundleURL), relaunch(inBackground: true) { return }
+        guard updateRetryTimer == nil else { return }
+        let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.relaunchInBackgroundWhenIdle() }
+        }
+        timer.tolerance = 10
         RunLoop.main.add(timer, forMode: .common)
-        updateTimer = timer
+        updateRetryTimer = timer
     }
 
     /// If FinderPlus.app on disk is a different build than this process, starts the new build and quits.
     private func relaunchIfUpdated(inBackground: Bool) -> Bool {
-        let plist = Bundle.main.bundleURL.appendingPathComponent("Contents/Info.plist")
-        guard let info = NSDictionary(contentsOf: plist),
-              let diskBuild = info["CFBundleVersion"] as? String,
-              let runningBuild, diskBuild != runningBuild else { return false }
-        let relaunch = Process()
-        relaunch.executableURL = URL(fileURLWithPath: "/bin/sh")
+        isUpdatePending && relaunch(inBackground: inBackground)
+    }
+
+    private func relaunch(inBackground: Bool) -> Bool {
+        let shell = Process()
+        shell.executableURL = URL(fileURLWithPath: "/bin/sh")
         // Wait for this process to exit, then open the new build (in the background if requested).
-        relaunch.arguments = ["-c", "while kill -0 \"$1\" 2>/dev/null; do sleep 0.2; done; "
+        shell.arguments = ["-c", "while kill -0 \"$1\" 2>/dev/null; do sleep 0.2; done; "
             + (inBackground ? "/usr/bin/open -g \"$2\" --args \"$3\"" : "/usr/bin/open \"$2\""),
             "relaunch", String(ProcessInfo.processInfo.processIdentifier), Bundle.main.bundlePath, Self.backgroundArgument]
         do {
-            try relaunch.run()
+            try shell.run()
         } catch {
             return false
         }
@@ -224,14 +248,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
         moduleWindows.removeAll { $0 === window }
-        let mainClosing = window === mainWindow
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            let mainVisible = !mainClosing && (self.mainWindow?.isVisible ?? false)
-            if !mainVisible, self.moduleWindows.isEmpty {
+            // Closed windows are released together with their SwiftUI views, so FinderPlus idles in
+            // the background with no UI in memory; the main window is rebuilt when reopened.
+            window.contentViewController = nil
+            window.delegate = nil
+            if self.mainWindow === window { self.mainWindow = nil }
+            if self.mainWindow == nil, self.moduleWindows.isEmpty {
                 if self.model.configuration.general.keepRunningInBackground {
                     // Back to agent mode: stay available for Finder requests without a Dock icon.
                     NSApp.setActivationPolicy(.accessory)
+                    if self.updateRetryTimer != nil { self.relaunchInBackgroundWhenIdle() }
                 } else {
                     NSApp.terminate(nil)
                 }

@@ -1,7 +1,8 @@
 import AppKit
 import WebKit
 
-/// Renders an HTML file to a paginated PDF with WebKit's print pipeline.
+/// Renders an HTML file to a paginated PDF with WebKit's print pipeline. Runs only inside the
+/// `FinderPlusPDFRenderer` helper process, never in the FinderPlus host.
 ///
 /// WKWebView only paginates through `NSPrintOperation`, and that operation needs the web view to
 /// live in a window, so an invisible window hosts it for the duration of the export.
@@ -15,16 +16,6 @@ final class PDFRenderer: NSObject, WKNavigationDelegate {
     private var navigationContinuation: CheckedContinuation<Void, Error>?
     private var printContinuation: CheckedContinuation<Bool, Never>?
     private var window: NSWindow?
-
-    nonisolated static func pageSize(named name: String) -> NSSize {
-        switch name {
-        case "letter": return NSSize(width: 612, height: 792)
-        case "legal": return NSSize(width: 612, height: 1008)
-        case "a5": return NSSize(width: 419.53, height: 595.28)
-        case "a3": return NSSize(width: 841.89, height: 1190.55)
-        default: return NSSize(width: 595.28, height: 841.89)
-        }
-    }
 
     func render(htmlFile: URL, to output: URL, page: PageSetup) async throws {
         let configuration = WKWebViewConfiguration()

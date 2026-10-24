@@ -34,6 +34,12 @@ jobs:
             CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= FP_ENTITLEMENTS_VARIANT=-AdHoc \
             -derivedDataPath build build 2>&1 | tee ci-logs/app.log
           lipo -archs build/Build/Products/Release/FinderPlus.app/Contents/MacOS/FinderPlus
+          # The PDF helper is embedded, and WebKit is linked by the helper only, never by the host.
+          APP=build/Build/Products/Release/FinderPlus.app
+          otool -L "$APP/Contents/MacOS/FinderPlus" | tee ci-logs/host-libraries.log
+          test -x "$APP/Contents/MacOS/FinderPlusPDFRenderer"
+          ! grep -q WebKit.framework ci-logs/host-libraries.log
+          codesign --verify --deep --strict "$APP"
           # FinderPlus must launch as an agent (no Dock icon when Finder wakes it).
           test "$(/usr/libexec/PlistBuddy -c 'Print LSUIElement' build/Build/Products/Release/FinderPlus.app/Contents/Info.plist)" = "true"
       - name: Summarize errors

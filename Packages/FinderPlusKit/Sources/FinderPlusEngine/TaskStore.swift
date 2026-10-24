@@ -36,9 +36,17 @@ public struct TaskRecord: Codable, Hashable, Identifiable, Sendable {
 @Observable
 public final class TaskStore {
     public private(set) var records: [TaskRecord] = []
-    public var historyLimit: Int = 200
+    public var historyLimit: Int = 200 {
+        didSet { trim() }
+    }
     private let fileURL: URL
     private static let maximumLogLines = 500
+    /// Only the newest finished tasks keep their full log; older ones keep its tail.
+    static let fullLogRecords = 20
+    static let archivedLogLines = 20
+    /// Quick actions (copy path, new file…) that succeeded are only shown on request, so only the
+    /// newest few are kept instead of letting them push real tasks out of the history.
+    static let quickActionRecords = 30
 
     public init(fileURL: URL = FinderPlusPaths.taskHistoryFile) {
         self.fileURL = fileURL
@@ -52,6 +60,7 @@ public final class TaskStore {
                 }
                 return record
             }
+            trim()
         }
     }
 
@@ -100,6 +109,7 @@ public final class TaskStore {
             record.finishedAt = Date()
             if status == .succeeded { record.progress = 1 }
         }
+        trim()
         persist()
     }
 
@@ -117,7 +127,28 @@ public final class TaskStore {
         change(&records[index])
     }
 
-    private func trim() {
+    /// Keeps memory flat however long FinderPlus runs: caps the history, the number of quick
+    /// actions, and the logs of older tasks. Records are ordered newest first.
+    func trim() {
+        var finished = 0
+        var quickActions = 0
+        records = records.compactMap { record in
+            guard record.isFinished else { return record }
+            let isQuickAction = !record.isTracked && record.status == .succeeded
+            if isQuickAction {
+                quickActions += 1
+                if quickActions > Self.quickActionRecords { return nil }
+            }
+            finished += 1
+            guard finished > Self.fullLogRecords else { return record }
+            var record = record
+            if isQuickAction {
+                record.log = []
+            } else if record.log.count > Self.archivedLogLines {
+                record.log.removeFirst(record.log.count - Self.archivedLogLines)
+            }
+            return record
+        }
         if records.count > historyLimit {
             records.removeLast(records.count - historyLimit)
         }

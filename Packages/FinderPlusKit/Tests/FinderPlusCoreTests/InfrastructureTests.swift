@@ -1,5 +1,6 @@
 import XCTest
 @testable import FinderPlusCore
+@testable import FinderPlusEngine
 
 final class ShellQuotingTests: XCTestCase {
     func testQuote() {
@@ -182,4 +183,34 @@ final class LineCounter: @unchecked Sendable {
     private var count = 0
     var value: Int { lock.withLock { count } }
     func increment() { lock.withLock { count += 1 } }
+}
+
+@MainActor
+final class TaskStoreTests: XCTestCase {
+    func testHistoryStaysBoundedForLongSessions() throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("fp-tasks-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let store = TaskStore(fileURL: file)
+        let request = ActionRequest(moduleID: "m", actionID: "a", selection: .container(URL(fileURLWithPath: "/tmp")), origin: .finder)
+
+        let tracked = store.start(request: request, moduleName: "M", title: "Convert", tracked: true)
+        for line in 0..<300 { store.appendLog(tracked, line: "line \(line)") }
+        store.finish(tracked, status: .succeeded, message: nil)
+        for _ in 0..<100 {
+            let quick = store.start(request: request, moduleName: "M", title: "Copy Path", tracked: false)
+            store.appendLog(quick, line: "copied")
+            store.finish(quick, status: .succeeded, message: nil)
+        }
+
+        XCTAssertEqual(store.records.filter { !$0.isTracked }.count, TaskStore.quickActionRecords)
+        // Quick actions never push real tasks out of the history…
+        let kept = try XCTUnwrap(store.record(tracked))
+        // …but an old task only keeps the tail of its log.
+        XCTAssertEqual(kept.log.count, TaskStore.archivedLogLines)
+        XCTAssertEqual(kept.log.last, "line 299")
+        XCTAssertTrue(store.records.dropFirst(TaskStore.fullLogRecords).filter { !$0.isTracked }.allSatisfy { $0.log.isEmpty })
+
+        store.historyLimit = 5
+        XCTAssertEqual(store.records.count, 5)
+    }
 }
