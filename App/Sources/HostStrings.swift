@@ -156,9 +156,9 @@ enum HostStrings {
     static let startup = t("Startup", "启动", "시작")
     static let launchAtLogin = t("Open FinderPlus at login", "登录时打开 FinderPlus", "로그인 시 FinderPlus 열기")
     static let keepRunning = t("Keep running in the background after closing the window", "关闭窗口后保持后台运行", "창을 닫은 후에도 백그라운드에서 실행")
-    static let keepRunningHelp = t("Finder menu actions start faster when FinderPlus is already running. It uses no CPU while idle.",
-                                   "FinderPlus 保持运行时右键操作响应更快，空闲时不占用 CPU。",
-                                   "FinderPlus가 실행 중이면 메뉴 작업이 더 빨리 시작됩니다. 유휴 시 CPU를 사용하지 않습니다.")
+    static let keepRunningHelp = t("FinderPlus runs silently in the background: no Dock icon, only the menu bar icon. Finder actions start faster when it is already running. It uses no CPU while idle.",
+                                   "FinderPlus 在后台静默运行：不显示程序坞图标，只保留菜单栏图标。保持运行时右键操作响应更快，空闲时不占用 CPU。",
+                                   "FinderPlus는 백그라운드에서 조용히 실행됩니다. Dock 아이콘 없이 메뉴 막대 아이콘만 표시됩니다. 실행 중이면 Finder 작업이 더 빨리 시작되며 유휴 시 CPU를 사용하지 않습니다.")
     static let safety = t("Safety & notifications", "安全与通知", "안전 및 알림")
     static let confirmDangerous = t("Ask before actions that modify system data", "执行修改系统数据的操作前先确认", "시스템 데이터를 수정하기 전에 확인")
     static let notifyOnCompletion = t("Notify when background tasks finish", "后台任务完成时通知", "백그라운드 작업 완료 시 알림")

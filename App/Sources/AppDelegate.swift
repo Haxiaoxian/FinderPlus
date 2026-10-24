@@ -31,10 +31,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         let launchedNormally = notification.userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool ?? true
         let relaunchedInBackground = CommandLine.arguments.contains(Self.backgroundArgument)
+        // FinderPlus is an agent app (LSUIElement): launching it for a Finder request, a login item
+        // or an update never shows a Dock icon. The Dock icon only appears while the window is open.
         if launchedNormally, !relaunchedInBackground {
             showMainWindow()
-        } else {
-            NSApp.setActivationPolicy(.accessory)
         }
         finishedLaunching = true
         // The URL only wakes us up; the request itself lives in the shared inbox. Process anything
@@ -195,6 +195,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         mainWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        // After switching from agent to regular, macOS only shows the menu bar once the app is
+        // activated again on the next run-loop pass.
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
+            self.mainWindow?.makeKeyAndOrderFront(nil)
+        }
     }
 
     private func presentInteractive(_ request: InteractiveRequest) {
@@ -224,7 +230,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let mainVisible = !mainClosing && (self.mainWindow?.isVisible ?? false)
             if !mainVisible, self.moduleWindows.isEmpty {
                 if self.model.configuration.general.keepRunningInBackground {
-                    // Stay available for Finder requests without a Dock icon.
+                    // Back to agent mode: stay available for Finder requests without a Dock icon.
                     NSApp.setActivationPolicy(.accessory)
                 } else {
                     NSApp.terminate(nil)
