@@ -76,7 +76,6 @@ targets:
     platform: macOS
     sources:
       - path: Packages/FinderPlusKit/Sources/FinderPlusPDFRenderer
-        group: Helpers
     settings:
       base:
         PRODUCT_NAME: FinderPlusPDFRenderer
