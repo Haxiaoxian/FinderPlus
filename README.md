@@ -21,7 +21,7 @@ FinderPlus 由 **宿主程序 + 功能模块 + Finder 集成层 + 统一执行�
 | Markdown 转 PDF `MarkdownPDF` | GFM 表格、代码高亮（highlight.js）、数学公式（KaTeX）、中文字体、主题、纸张与页边距 | 已实现，分页输出需真机验证 |
 | MarkItDown `MarkItDown` | PDF/Word/PPT/Excel/HTML → Markdown；FinderPlus 管理独立 venv；批量；日志 | 已实现 |
 | 文件夹图标 `FolderIcon` | 颜色 + SF Symbols 徽标、图标包、自定义图片、批量、预览、历史与恢复 | 已实现 |
-| Finder 侧边栏 `Sidebar` | 收藏项添加/移除/排序、自动备份与恢复 | **实验性**（未公开 API，默认关闭）；自定义侧边栏图标暂未实现 |
+| Finder 侧边栏图标 `Sidebar` | 为侧边栏文件夹设置 SF Symbols 图标（含 iCloud / OneDrive 等云盘文件夹）；添加/移除收藏；不调整位置；修改前自动备份 | **实验性**（未公开接口，默认关闭）；实现方式参考 [SidebarFavorites](https://github.com/ivg-design/SidebarFavorites)（MIT） |
 | 个性化与外观 `Appearance` | 语言、主题、菜单名称/布局/图标/命名方式 | 已实现 |
 | 脚本功能包 | 无需重新编译即可导入的 Shell/Python 功能；导入时审核并按内容哈希信任 | 已实现 |
 

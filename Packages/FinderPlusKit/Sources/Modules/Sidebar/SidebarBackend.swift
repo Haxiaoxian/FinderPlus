@@ -1,17 +1,26 @@
 import Foundation
 
-/// One entry of Finder's sidebar "Favorites" section.
-public struct SidebarItem: Hashable, Identifiable, Sendable {
-    public var id: String { "\(index)-\(name)" }
-    public var index: Int
+/// One row of Finder's sidebar Favorites, as read from `LSSharedFileList`.
+public struct SidebarRow: Hashable, Identifiable, Sendable {
+    /// `LSSharedFileListItemGetID`: stable across processes and in-place updates.
+    public var id: UInt32
     public var name: String
-    public var url: URL?
+    /// Resolved path, or the path the row's bookmark was recorded with when it cannot resolve
+    /// (a cloud domain still starting, an unmounted volume).
+    public var path: String?
+    /// The row's icon override code (`com.apple.LSSharedFileList.OverrideIcon.OSType`), if any.
+    public var iconCode: String?
+    /// Built-in entries (Recents, AirDrop, Applications…) carry a special identifier and never
+    /// draw an override, so they are listed but not offered for icons.
+    public var isSpecial: Bool
+
+    public var url: URL? { path.map { URL(fileURLWithPath: $0, isDirectory: true) } }
 }
 
 public enum SidebarBackendError: LocalizedError {
     case unavailable
     case operationFailed(String)
-    case notVerified
+    case rowNotFound
 
     public var errorDescription: String? {
         switch self {
@@ -19,38 +28,52 @@ public enum SidebarBackendError: LocalizedError {
             return "The Finder sidebar list API is not available on this version of macOS."
         case .operationFailed(let detail):
             return detail
-        case .notVerified:
-            return "macOS accepted the request but the sidebar did not change. This macOS version may no longer allow it."
+        case .rowNotFound:
+            return "That folder is no longer in Finder's sidebar."
         }
     }
 }
 
-/// Access to Finder's Favorites through `LSSharedFileList`.
+/// Access to Finder's Favorites through `LSSharedFileList`, resolved at run time with `dlsym`.
 ///
-/// The API has been deprecated since macOS 10.11 and is undocumented in recent releases. To keep
-/// the rest of FinderPlus independent of it, the functions are resolved at runtime with `dlsym`:
-/// if Apple removes them, this module reports itself unavailable instead of failing to build or
-/// crashing. Every write is verified by reading the list back.
+/// The approach (icon override property + Launch Services type declarations) follows
+/// SidebarFavorites by Ilya Gusinski (MIT, github.com/ivg-design/SidebarFavorites), including
+/// these measured rules:
+///   * item references are only valid while their snapshot array is alive;
+///   * `kLSSharedFileListItemLast`/`BeforeFirst` are bogus pointers (0x2/0x1) that current macOS
+///     dereferences, so anchors are always real rows (or NULL = before the first row);
+///   * `LSSharedFileListItemSetProperty` crashes on a NULL value: clearing goes through an
+///     in-place re-insert with `propertiesToClear`;
+///   * re-inserting a URL the list already holds updates that row in place when anchored after
+///     its own predecessor, and an empty display name resets the label, so the current name is
+///     always passed back in.
+/// FinderPlus never moves rows; it only adds, removes and sets icons.
 final class SidebarBackend {
+    static let overrideIconKey = "com.apple.LSSharedFileList.OverrideIcon.OSType" as CFString
+    static let specialItemKey = "com.apple.LSSharedFileList.SpecialItemIdentifier" as CFString
+
     private typealias CreateFn = @convention(c) (OpaquePointer?, OpaquePointer?, OpaquePointer?) -> OpaquePointer?
     private typealias SnapshotFn = @convention(c) (OpaquePointer?, UnsafeMutablePointer<UInt32>?) -> OpaquePointer?
-    private typealias CopyNameFn = @convention(c) (OpaquePointer?) -> OpaquePointer?
+    private typealias CopyFn = @convention(c) (OpaquePointer?) -> OpaquePointer?
     private typealias CopyURLFn = @convention(c) (OpaquePointer?, UInt32, UnsafeMutablePointer<OpaquePointer?>?) -> OpaquePointer?
     private typealias InsertFn = @convention(c) (OpaquePointer?, OpaquePointer?, OpaquePointer?, OpaquePointer?, OpaquePointer?,
                                                  OpaquePointer?, OpaquePointer?) -> OpaquePointer?
     private typealias RemoveFn = @convention(c) (OpaquePointer?, OpaquePointer?) -> Int32
-    private typealias MoveFn = @convention(c) (OpaquePointer?, OpaquePointer?, OpaquePointer?) -> Int32
+    private typealias GetIDFn = @convention(c) (OpaquePointer?) -> UInt32
+    private typealias CopyPropertyFn = @convention(c) (OpaquePointer?, OpaquePointer?) -> OpaquePointer?
+    private typealias SetPropertyFn = @convention(c) (OpaquePointer?, OpaquePointer?, OpaquePointer?) -> Int32
 
     private let fnCreate: CreateFn
     private let fnSnapshot: SnapshotFn
-    private let fnCopyName: CopyNameFn
+    private let fnCopyName: CopyFn
     private let fnCopyURL: CopyURLFn
     private let fnInsert: InsertFn
     private let fnRemove: RemoveFn
-    private let fnMove: MoveFn
+    private let fnGetID: GetIDFn
+    private let fnCopyProperty: CopyPropertyFn
+    private let fnSetProperty: SetPropertyFn
+    private let fnCopyBookmark: CopyFn?
     private let favoritesListType: OpaquePointer
-    private let lastItemMarker: OpaquePointer?
-    private let beforeFirstMarker: OpaquePointer?
 
     /// `nil` when the running macOS no longer exports the API.
     init?() {
@@ -59,106 +82,131 @@ final class SidebarBackend {
             guard let pointer = dlsym(handle ?? UnsafeMutableRawPointer(bitPattern: -2), name) else { return nil }
             return unsafeBitCast(pointer, to: type)
         }
-        func constant(_ name: String) -> OpaquePointer? {
-            guard let pointer = dlsym(handle ?? UnsafeMutableRawPointer(bitPattern: -2), name) else { return nil }
-            return pointer.assumingMemoryBound(to: OpaquePointer?.self).pointee
-        }
         guard let create = symbol("LSSharedFileListCreate", as: CreateFn.self),
               let snapshot = symbol("LSSharedFileListCopySnapshot", as: SnapshotFn.self),
-              let copyName = symbol("LSSharedFileListItemCopyDisplayName", as: CopyNameFn.self),
+              let copyName = symbol("LSSharedFileListItemCopyDisplayName", as: CopyFn.self),
               let copyURL = symbol("LSSharedFileListItemCopyResolvedURL", as: CopyURLFn.self),
               let insert = symbol("LSSharedFileListInsertItemURL", as: InsertFn.self),
               let remove = symbol("LSSharedFileListItemRemove", as: RemoveFn.self),
-              let move = symbol("LSSharedFileListItemMove", as: MoveFn.self),
-              let favorites = constant("kLSSharedFileListFavoriteItems") else { return nil }
-        self.fnCreate = create
-        self.fnSnapshot = snapshot
-        self.fnCopyName = copyName
-        self.fnCopyURL = copyURL
-        self.fnInsert = insert
-        self.fnRemove = remove
-        self.fnMove = move
+              let getID = symbol("LSSharedFileListItemGetID", as: GetIDFn.self),
+              let copyProperty = symbol("LSSharedFileListItemCopyProperty", as: CopyPropertyFn.self),
+              let setProperty = symbol("LSSharedFileListItemSetProperty", as: SetPropertyFn.self),
+              let favoritesPointer = dlsym(handle ?? UnsafeMutableRawPointer(bitPattern: -2), "kLSSharedFileListFavoriteItems"),
+              let favorites = favoritesPointer.assumingMemoryBound(to: OpaquePointer?.self).pointee
+        else { return nil }
+        fnCreate = create
+        fnSnapshot = snapshot
+        fnCopyName = copyName
+        fnCopyURL = copyURL
+        fnInsert = insert
+        fnRemove = remove
+        fnGetID = getID
+        fnCopyProperty = copyProperty
+        fnSetProperty = setProperty
+        fnCopyBookmark = symbol("LSSharedFileListItemCopyBookmarkData", as: CopyFn.self)
         favoritesListType = favorites
-        lastItemMarker = constant("kLSSharedFileListItemLast")
-        beforeFirstMarker = constant("kLSSharedFileListItemBeforeFirst")
     }
 
     // MARK: Reading
 
-    func items() throws -> [SidebarItem] {
-        try withList { list in
-            withItems(list) { items in
-                items.enumerated().map { index, item in
-                    SidebarItem(index: index, name: displayName(item), url: resolvedURL(item))
-                }
-            }
-        }
+    func rows() throws -> [SidebarRow] {
+        try withSnapshot { _, items in items.map(row(for:)) }
     }
 
     // MARK: Writing
 
-    func add(_ url: URL) throws {
-        let target = url.standardizedFileURL
-        if try items().contains(where: { $0.url?.standardizedFileURL == target }) { return }
-        try withList { list in
-            let cfURL = url as CFURL
-            let item = fnInsert(list, lastItemMarker, nil, nil, opaque(cfURL), nil, nil)
-            if let item { release(item) }
-        }
-        guard try items().contains(where: { $0.url?.standardizedFileURL == target }) else {
-            throw SidebarBackendError.notVerified
-        }
-    }
-
-    func remove(_ url: URL) throws {
-        let target = url.standardizedFileURL
-        try withList { list in
-            try withItems(list) { items in
-                for item in items where resolvedURL(item)?.standardizedFileURL == target {
-                    let status = fnRemove(list, item)
-                    if status != 0 { throw SidebarBackendError.operationFailed("LSSharedFileListItemRemove: \(status)") }
-                }
+    /// Sets the icon code on an existing row (identified by path). Name and position are unchanged.
+    func setIconCode(_ code: String, forPath path: String) throws {
+        try withSnapshot { _, items in
+            guard let item = items.first(where: { Self.samePath(self.path(of: $0), path) }) else {
+                throw SidebarBackendError.rowNotFound
             }
-        }
-        if try items().contains(where: { $0.url?.standardizedFileURL == target }) {
-            throw SidebarBackendError.notVerified
+            let value = code as CFString
+            let status = withExtendedLifetime(value) {
+                fnSetProperty(item, opaque(Self.overrideIconKey), opaque(value))
+            }
+            if status != 0 { throw SidebarBackendError.operationFailed("LSSharedFileListItemSetProperty: \(status)") }
         }
     }
 
-    /// Moves the item at `index` so that it ends up at `newIndex`.
-    func move(from index: Int, to newIndex: Int) throws {
-        try withList { list in
-            try withItems(list) { all in
-                guard all.indices.contains(index), all.indices.contains(newIndex), index != newIndex else { return }
-                let item = all[index]
-                var remaining = all
-                remaining.remove(at: index)
-                let after: OpaquePointer? = newIndex == 0 ? beforeFirstMarker : remaining[newIndex - 1]
-                let status = fnMove(list, item, after)
-                if status != 0 { throw SidebarBackendError.operationFailed("LSSharedFileListItemMove: \(status)") }
+    /// Removes the icon code from the row for `path`, keeping its name and position.
+    func clearIconCode(forPath path: String) throws {
+        try withSnapshot { list, items in
+            guard let index = items.firstIndex(where: { Self.samePath(self.path(of: $0), path) }) else { return }
+            let item = items[index]
+            let name = displayName(item)
+            let anchor: OpaquePointer? = index > 0 ? items[index - 1] : nil
+            let label = name as CFString
+            let url = URL(fileURLWithPath: self.path(of: item) ?? path, isDirectory: true) as CFURL
+            let clear = [Self.overrideIconKey] as CFArray
+            let inserted = withExtendedLifetime((label, url, clear)) {
+                fnInsert(list, anchor, opaque(label), nil, opaque(url), nil, opaque(clear))
+            }
+            guard let inserted else {
+                throw SidebarBackendError.operationFailed("Couldn't update the sidebar row.")
+            }
+            release(inserted)
+        }
+    }
+
+    /// Appends a row for `url` with an icon code. Returns false if the folder was already there
+    /// (then its icon is set in place and the row stays where it is).
+    @discardableResult
+    func insert(_ url: URL, name: String, iconCode: String) throws -> Bool {
+        let path = url.standardizedFileURL.path
+        return try withSnapshot { list, items in
+            if let existing = items.first(where: { Self.samePath(self.path(of: $0), path) }) {
+                let value = iconCode as CFString
+                let status = withExtendedLifetime(value) {
+                    fnSetProperty(existing, opaque(Self.overrideIconKey), opaque(value))
+                }
+                if status != 0 { throw SidebarBackendError.operationFailed("LSSharedFileListItemSetProperty: \(status)") }
+                return false
+            }
+            let anchor = items.last
+            let properties = [Self.overrideIconKey: iconCode as CFString] as CFDictionary
+            let label = (name.isEmpty ? url.lastPathComponent : name) as CFString
+            let target = url as CFURL
+            let inserted = withExtendedLifetime((properties, label, target)) {
+                fnInsert(list, anchor, opaque(label), nil, opaque(target), opaque(properties), nil)
+            }
+            guard let inserted else {
+                throw SidebarBackendError.operationFailed("Couldn't add \(url.lastPathComponent) to Finder's sidebar.")
+            }
+            release(inserted)
+            return true
+        }
+    }
+
+    func remove(path: String) throws {
+        try withSnapshot { list, items in
+            for item in items where Self.samePath(self.path(of: item), path) {
+                let status = fnRemove(list, item)
+                if status != 0 { throw SidebarBackendError.operationFailed("LSSharedFileListItemRemove: \(status)") }
             }
         }
     }
 
     // MARK: Helpers
 
-    private func withList<T>(_ body: (OpaquePointer) throws -> T) throws -> T {
+    /// Calls `body` with the list and its items. Item references are owned by the snapshot array,
+    /// so they are only valid inside `body` — never let them escape.
+    private func withSnapshot<T>(_ body: (OpaquePointer, [OpaquePointer]) throws -> T) throws -> T {
         guard let list = fnCreate(nil, favoritesListType, nil) else { throw SidebarBackendError.unavailable }
         defer { release(list) }
-        return try body(list)
-    }
-
-    /// Calls `body` with the list's items. The item references are owned by the snapshot array, so
-    /// they are only valid inside `body`, while the array is kept alive — never let them escape.
-    private func withItems<T>(_ list: OpaquePointer, _ body: ([OpaquePointer]) throws -> T) rethrows -> T {
-        guard let arrayPointer = fnSnapshot(list, nil) else { return try body([]) }
+        guard let arrayPointer = fnSnapshot(list, nil) else { throw SidebarBackendError.unavailable }
         let array = Unmanaged<CFArray>.fromOpaque(UnsafeRawPointer(arrayPointer)).takeRetainedValue()
         return try withExtendedLifetime(array) {
             let items = (0..<CFArrayGetCount(array)).compactMap { index in
                 CFArrayGetValueAtIndex(array, index).map { OpaquePointer($0) }
             }
-            return try body(items)
+            return try body(list, items)
         }
+    }
+
+    private func row(for item: OpaquePointer) -> SidebarRow {
+        SidebarRow(id: fnGetID(item), name: displayName(item), path: path(of: item), iconCode: iconCode(of: item),
+                   isSpecial: hasProperty(item, Self.specialItemKey))
     }
 
     private func displayName(_ item: OpaquePointer) -> String {
@@ -166,10 +214,36 @@ final class SidebarBackend {
         return Unmanaged<CFString>.fromOpaque(UnsafeRawPointer(pointer)).takeRetainedValue() as String
     }
 
-    private func resolvedURL(_ item: OpaquePointer) -> URL? {
+    private func path(of item: OpaquePointer) -> String? {
         // kLSSharedFileListNoUserInteraction | kLSSharedFileListDoNotMountVolumes
-        guard let pointer = fnCopyURL(item, 0b11, nil) else { return nil }
-        return Unmanaged<CFURL>.fromOpaque(UnsafeRawPointer(pointer)).takeRetainedValue() as URL
+        if let pointer = fnCopyURL(item, 0b11, nil) {
+            return (Unmanaged<CFURL>.fromOpaque(UnsafeRawPointer(pointer)).takeRetainedValue() as URL).path
+        }
+        guard let fnCopyBookmark, let pointer = fnCopyBookmark(item) else { return nil }
+        let data = Unmanaged<CFData>.fromOpaque(UnsafeRawPointer(pointer)).takeRetainedValue() as Data
+        let values = URL.resourceValues(forKeys: [.pathKey], fromBookmarkData: data)
+        return values?.path
+    }
+
+    private func iconCode(of item: OpaquePointer) -> String? {
+        guard let pointer = fnCopyProperty(item, opaque(Self.overrideIconKey)) else { return nil }
+        // Only string values are meaningful; anything else is treated as "no override".
+        let value = Unmanaged<AnyObject>.fromOpaque(UnsafeRawPointer(pointer)).takeRetainedValue()
+        return value as? String
+    }
+
+    private func hasProperty(_ item: OpaquePointer, _ key: CFString) -> Bool {
+        guard let pointer = fnCopyProperty(item, opaque(key)) else { return false }
+        release(pointer)
+        return true
+    }
+
+    static func samePath(_ lhs: String?, _ rhs: String) -> Bool {
+        guard let lhs else { return false }
+        if lhs == rhs { return true }
+        let left = URL(fileURLWithPath: lhs).standardizedFileURL.resolvingSymlinksInPath().path
+        let right = URL(fileURLWithPath: rhs).standardizedFileURL.resolvingSymlinksInPath().path
+        return left == right
     }
 
     private func opaque(_ object: AnyObject) -> OpaquePointer {
@@ -178,88 +252,5 @@ final class SidebarBackend {
 
     private func release(_ pointer: OpaquePointer) {
         Unmanaged<AnyObject>.fromOpaque(UnsafeRawPointer(pointer)).release()
-    }
-}
-
-/// Copies Finder's sidebar data files so any change can be rolled back.
-struct SidebarBackupStore {
-    let directory: URL
-
-    static var sourceDirectory: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/com.apple.sharedfilelist", isDirectory: true)
-    }
-
-    static var sourceFiles: [URL] {
-        ["sfl3", "sfl2"].map {
-            sourceDirectory.appendingPathComponent("com.apple.LSSharedFileList.FavoriteItems.\($0)")
-        }.filter { FileManager.default.fileExists(atPath: $0.path) }
-    }
-
-    struct Backup: Identifiable, Hashable {
-        var id: String { url.path }
-        var url: URL
-        var date: Date
-    }
-
-    func backups() -> [Backup] {
-        let folders = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.creationDateKey],
-                                                                    options: [.skipsHiddenFiles])) ?? []
-        return folders.map { folder in
-            let date = (try? folder.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
-            return Backup(url: folder, date: date)
-        }
-        .sorted { $0.date > $1.date }
-    }
-
-    @discardableResult
-    func createBackup(reason: String) throws -> Backup {
-        let files = Self.sourceFiles
-        guard !files.isEmpty else {
-            throw SidebarBackendError.operationFailed("Finder sidebar data file not found in \(Self.sourceDirectory.path).")
-        }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd-HHmmss"
-        let folder = directory.appendingPathComponent("\(formatter.string(from: Date()))-\(reason)", isDirectory: true)
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        for file in files {
-            try FileManager.default.copyItem(at: file, to: folder.appendingPathComponent(file.lastPathComponent))
-        }
-        prune(keeping: 30)
-        return Backup(url: folder, date: Date())
-    }
-
-    /// Restores files from `backup` and restarts the processes that cache them.
-    func restore(_ backup: Backup) throws {
-        try createBackup(reason: "before-restore")
-        let files = (try? FileManager.default.contentsOfDirectory(at: backup.url, includingPropertiesForKeys: nil)) ?? []
-        for file in files where file.lastPathComponent.hasPrefix("com.apple.LSSharedFileList.FavoriteItems.") {
-            let destination = Self.sourceDirectory.appendingPathComponent(file.lastPathComponent)
-            if FileManager.default.fileExists(atPath: destination.path) {
-                _ = try FileManager.default.replaceItemAt(destination, withItemAt: try stagedCopy(file))
-            } else {
-                try FileManager.default.copyItem(at: file, to: destination)
-            }
-        }
-        for process in ["sharedfilelistd", "Finder"] {
-            let killall = Process()
-            killall.executableURL = URL(fileURLWithPath: "/usr/bin/killall")
-            killall.arguments = [process]
-            try? killall.run()
-            killall.waitUntilExit()
-        }
-    }
-
-    private func stagedCopy(_ file: URL) throws -> URL {
-        let staged = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "-" + file.lastPathComponent)
-        try FileManager.default.copyItem(at: file, to: staged)
-        return staged
-    }
-
-    private func prune(keeping count: Int) {
-        for backup in backups().dropFirst(count) {
-            try? FileManager.default.removeItem(at: backup.url)
-        }
     }
 }

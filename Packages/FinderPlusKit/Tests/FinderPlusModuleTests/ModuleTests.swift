@@ -1,4 +1,5 @@
 import CoreGraphics
+import UniformTypeIdentifiers
 import XCTest
 @testable import FinderPlusBuiltinModules
 @testable import FinderPlusCore
@@ -59,7 +60,7 @@ final class BuiltinModuleContractTests: XCTestCase {
 
         let folder = actions(FinderSelection(context: .items, items: [SelectedItem(url: URL(fileURLWithPath: "/tmp/Project"), kind: .folder)],
                                              container: URL(fileURLWithPath: "/tmp")))
-        XCTAssertTrue(folder.isSuperset(of: ["terminal", "open.vs-code", "choose", "add", "copyPath"]))
+        XCTAssertTrue(folder.isSuperset(of: ["terminal", "open.vs-code", "choose", "setIcon", "copyPath"]))
         XCTAssertFalse(folder.contains("open.coteditor"))
 
         let background = actions(.container(URL(fileURLWithPath: "/tmp")))
@@ -262,21 +263,70 @@ final class SidebarBackendTests: XCTestCase {
     /// Regression test for a use-after-free: item references must stay valid while they are read.
     func testReadingFavoritesDoesNotCrash() throws {
         guard let backend = SidebarBackend() else { throw XCTSkip("LSSharedFileList is not available on this macOS") }
-        let items: [SidebarItem]
+        let rows: [SidebarRow]
         do {
-            items = try backend.items()
+            rows = try backend.rows()
         } catch {
             throw XCTSkip("Sidebar list unavailable: \(error.localizedDescription)")
         }
-        // Read every field repeatedly; with dangling references this crashes in objc_msgSend.
         for _ in 0..<20 {
-            let again = try backend.items()
-            XCTAssertEqual(again.map(\.name), items.map(\.name))
+            XCTAssertEqual(try backend.rows().map(\.name), rows.map(\.name))
         }
     }
 
+    func testIconCodes() {
+        let code = SidebarIconCode.allocate(avoiding: [])
+        XCTAssertTrue(SidebarIconCode.isOurs(code))
+        XCTAssertNotEqual(SidebarIconCode.allocate(avoiding: [code]), code)
+        XCTAssertFalse(SidebarIconCode.isOurs("S003"))
+        XCTAssertTrue(SidebarIconCode.isSidebarFavoritesCode("S003"))
+    }
+
+    /// The helper bundle must make Launch Services resolve our code to a declared type.
+    func testHelperBundleRegistersIconCodes() throws {
+        let folder = try temporaryFolder()
+        let helper = SidebarIconHelper(directory: folder)
+        defer {
+            helper.unregister()
+            try? FileManager.default.removeItem(at: folder)
+        }
+        let favorite = SidebarFavorite(id: UUID(), path: "/tmp/Projects", symbol: "hammer.fill", enabled: true,
+                                       code: "FZZY", provenance: .managed)
+        XCTAssertTrue(try helper.update(for: [favorite]))
+        XCTAssertFalse(try helper.update(for: [favorite]), "unchanged declarations must not rebuild")
+        let type = UTType(tag: "FZZY", tagClass: .init(rawValue: "com.apple.ostype"), conformingTo: nil)
+        XCTAssertEqual(type?.identifier, SidebarIconHelper.typePrefix + "fzzy")
+        XCTAssertTrue(type?.conforms(to: .folder) ?? false)
+    }
+
+    /// End to end on the CI Mac: add a folder with an icon, read the code back, then remove it.
+    func testAddIconAndRemoveFavorite() throws {
+        guard SidebarBackend() != nil else { throw XCTSkip("LSSharedFileList is not available on this macOS") }
+        let data = try temporaryFolder()
+        let target = try temporaryFolder()
+        let coordinator = SidebarIconCoordinator(dataDirectory: data)
+        defer {
+            if let favorite = coordinator.store.load().first { _ = try? coordinator.delete(favorite.id) }
+            coordinator.helper.unregister()
+            try? FileManager.default.removeItem(at: data)
+            try? FileManager.default.removeItem(at: target)
+        }
+        let added: SidebarIconCoordinator.Result
+        do {
+            added = try coordinator.upsert(path: target.path, symbol: "star.fill")
+        } catch {
+            throw XCTSkip("Sidebar not writable here: \(error.localizedDescription)")
+        }
+        let favorite = try XCTUnwrap(added.favorites.first)
+        XCTAssertEqual(favorite.provenance, .managed)
+        let row = try XCTUnwrap(added.rows.first { SidebarBackend.samePath($0.path, target.path) })
+        XCTAssertEqual(row.iconCode, favorite.code)
+
+        let removed = try coordinator.delete(favorite.id)
+        XCTAssertFalse(removed.rows.contains { SidebarBackend.samePath($0.path, target.path) })
+    }
+
     func testDisabledModulesRunNoDependencyChecks() async {
-        // The sidebar is experimental and disabled by default, so the host must not call into it.
         XCTAssertFalse(HostConfiguration().isEnabled(SidebarModule().manifest))
     }
 }
