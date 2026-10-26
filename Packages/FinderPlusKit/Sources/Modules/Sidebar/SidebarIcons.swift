@@ -41,6 +41,26 @@ struct SidebarFavoriteStore {
     func save(_ favorites: [SidebarFavorite]) throws {
         try FinderPlusJSON.write(favorites, to: fileURL)
     }
+
+    /// Codes that once showed another symbol. Finder and the system icon cache remember what a
+    /// code looked like, so a retired code is never handed out again.
+    var retiredURL: URL { directory.appendingPathComponent("retired-codes.json") }
+
+    func retiredCodes() -> Set<String> {
+        Set((try? FinderPlusJSON.read([String].self, from: retiredURL)) ?? [])
+    }
+
+    func retire(_ code: String) {
+        var codes = (try? FinderPlusJSON.read([String].self, from: retiredURL)) ?? []
+        guard !codes.contains(code) else { return }
+        codes.append(code)
+        try? FinderPlusJSON.write(Array(codes.suffix(2000)), to: retiredURL)
+    }
+
+    /// Every code that must not be allocated: in use, or retired.
+    func unavailableCodes(_ favorites: [SidebarFavorite]) -> Set<String> {
+        Set(favorites.map(\.code)).union(retiredCodes())
+    }
 }
 
 /// Mints the four-character icon codes. Codes are case-sensitive; `F` + uppercase keeps them
@@ -197,12 +217,20 @@ final class SidebarIconCoordinator {
         var favorites = store.load()
         let standardized = URL(fileURLWithPath: path).standardizedFileURL.path
         let id: UUID
+        var replacing: Set<UUID> = []
         if let index = favorites.firstIndex(where: { SidebarBackend.samePath($0.path, standardized) }) {
-            favorites[index].symbol = symbol
+            if favorites[index].symbol != symbol {
+                // A new symbol gets a new code: Finder caches the artwork behind a code, so
+                // keeping the old one would leave the old icon on screen.
+                store.retire(favorites[index].code)
+                favorites[index].code = SidebarIconCode.allocate(avoiding: store.unavailableCodes(favorites))
+                favorites[index].symbol = symbol
+                replacing.insert(favorites[index].id)
+            }
             favorites[index].enabled = enabled
             id = favorites[index].id
         } else {
-            let used = Set(favorites.map(\.code))
+            let used = store.unavailableCodes(favorites)
             // A folder the user already had in the sidebar stays theirs: FinderPlus will only ever
             // change its icon, never delete the row.
             var alreadyInSidebar = false
@@ -214,7 +242,7 @@ final class SidebarIconCoordinator {
                                              code: SidebarIconCode.allocate(avoiding: used),
                                              provenance: alreadyInSidebar ? .adopted : .managed))
         }
-        let result = try apply(favorites, inserting: [id])
+        let result = try apply(favorites, inserting: [id], replacing: replacing)
         // Saved either way, so the list shows it; the editor reports why it isn't in the sidebar.
         if let problem = result.problems[id] { throw SidebarBackendError.operationFailed(problem) }
         return result
@@ -271,8 +299,12 @@ final class SidebarIconCoordinator {
         try apply(store.load())
     }
 
-    /// - Parameter inserting: favorites whose row may be added if it is missing.
-    private func apply(_ input: [SidebarFavorite], inserting: Set<UUID> = []) throws -> Result {
+    /// - Parameters:
+    ///   - inserting: favorites whose row may be added if it is missing.
+    ///   - replacing: favorites whose code changed for a new symbol. A row FinderPlus added is
+    ///     swapped for a new one at the same position, which Finder draws right away; a row the
+    ///     user had before keeps its place and only gets the new code (shown after a Finder restart).
+    private func apply(_ input: [SidebarFavorite], inserting: Set<UUID> = [], replacing: Set<UUID> = []) throws -> Result {
         guard let backend = SidebarBackend() else { throw SidebarBackendError.unavailable }
         var favorites = input
         let previouslyDeclared = Dictionary(store.load().filter(\.enabled).map { ($0.code, $0.symbol) }, uniquingKeysWith: { a, _ in a })
@@ -293,8 +325,12 @@ final class SidebarIconCoordinator {
                 if favorite.enabled {
                     if let row {
                         if row.iconCode != favorite.code {
-                            try backend.setIconCode(favorite.code, forPath: row.path ?? favorite.path)
-                            needsRestart = true
+                            if replacing.contains(favorite.id), favorite.provenance == .managed {
+                                try backend.replaceRow(path: row.path ?? favorite.path, iconCode: favorite.code)
+                            } else {
+                                try backend.setIconCode(favorite.code, forPath: row.path ?? favorite.path)
+                                needsRestart = true
+                            }
                         } else if previouslyDeclared[favorite.code] != favorite.symbol {
                             needsRestart = true // same code, new symbol: Finder caches the old one
                         }
@@ -331,7 +367,7 @@ final class SidebarIconCoordinator {
             favorites[index].enabled = true
         } else {
             favorites.append(SidebarFavorite(id: UUID(), path: path, symbol: symbol, enabled: true,
-                                             code: SidebarIconCode.allocate(avoiding: Set(favorites.map(\.code))),
+                                             code: SidebarIconCode.allocate(avoiding: store.unavailableCodes(favorites)),
                                              provenance: .adopted))
         }
         return try apply(favorites)

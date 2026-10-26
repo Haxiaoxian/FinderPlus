@@ -184,6 +184,32 @@ final class SidebarBackend {
         }
     }
 
+    /// Swaps the row for `path` for a fresh one with `iconCode`, at the same position and with the
+    /// same name. Finder redraws an inserted row immediately, whereas a changed code on a row
+    /// already on screen only shows after Finder restarts. Only used for rows FinderPlus added.
+    func replaceRow(path: String, iconCode: String) throws {
+        try withSnapshot { list, items in
+            guard let index = items.firstIndex(where: { Self.samePath(self.path(of: $0), path) }) else {
+                throw SidebarBackendError.rowNotFound
+            }
+            let item = items[index]
+            let label = displayName(item) as CFString
+            let url = URL(fileURLWithPath: self.path(of: item) ?? path, isDirectory: true) as CFURL
+            // The predecessor stays valid: the snapshot array keeps every item alive.
+            let anchor: OpaquePointer? = index > 0 ? items[index - 1] : nil
+            let status = fnRemove(list, item)
+            if status != 0 { throw SidebarBackendError.operationFailed("LSSharedFileListItemRemove: \(status)") }
+            let properties = [Self.overrideIconKey: iconCode as CFString] as CFDictionary
+            let inserted = withExtendedLifetime((properties, label, url)) {
+                fnInsert(list, anchor, opaque(label), nil, opaque(url), opaque(properties), nil)
+            }
+            guard let inserted else {
+                throw SidebarBackendError.operationFailed("Couldn't put the sidebar row back.")
+            }
+            release(inserted)
+        }
+    }
+
     func remove(path: String) throws {
         try withSnapshot { list, items in
             for item in items where Self.samePath(self.path(of: item), path) {

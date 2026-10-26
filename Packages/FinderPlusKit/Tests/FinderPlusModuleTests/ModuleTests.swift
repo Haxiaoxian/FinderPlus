@@ -405,6 +405,18 @@ final class SidebarBackendTests: XCTestCase {
         let row = try XCTUnwrap(added.rows.first { SidebarBackend.samePath($0.path, target.path) })
         XCTAssertEqual(row.iconCode, favorite.code)
 
+        // Changing the symbol must reach Finder: new code, row swapped in place, no restart needed.
+        let position = try XCTUnwrap(added.rows.firstIndex { SidebarBackend.samePath($0.path, target.path) })
+        let edited = try coordinator.upsert(path: target.path, symbol: "leaf.fill")
+        let updated = try XCTUnwrap(edited.favorites.first)
+        XCTAssertNotEqual(updated.code, favorite.code)
+        XCTAssertTrue(coordinator.store.retiredCodes().contains(favorite.code))
+        XCTAssertFalse(edited.needsFinderRestart)
+        let newPosition = try XCTUnwrap(edited.rows.firstIndex { SidebarBackend.samePath($0.path, target.path) })
+        XCTAssertEqual(newPosition, position)
+        XCTAssertEqual(edited.rows[newPosition].iconCode, updated.code)
+        XCTAssertEqual(edited.rows.count, added.rows.count)
+
         let removed = try coordinator.delete(favorite.id)
         XCTAssertFalse(removed.rows.contains { SidebarBackend.samePath($0.path, target.path) })
     }
