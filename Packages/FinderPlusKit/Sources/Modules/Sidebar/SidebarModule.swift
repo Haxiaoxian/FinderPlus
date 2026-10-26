@@ -23,20 +23,15 @@ public final class SidebarModule: FinderPlusModule {
         icon: "sidebar.left",
         category: .finder,
         stability: .experimental,
-        capabilities: ["finder.menu", "settings.custom-view", "host.interactive-ui"],
+        // Managed from the module page only; it adds nothing to Finder's context menu.
+        capabilities: ["settings.custom-view"],
         supportedTypes: ["folder"],
-        permissions: [.readSelection, .modifyFinder, .privateSystemData],
+        permissions: [.modifyFinder, .privateSystemData],
         enabledByDefault: false
     )
 
     public func menuActions(settings: ModuleSettings) -> [ActionDescriptor] {
-        [
-            ActionDescriptor(id: "setIcon",
-                             title: LocalizedText(en: "Sidebar Icon…", zhHans: "设置侧边栏图标…", ko: "사이드바 아이콘…"),
-                             icon: "sidebar.left", group: .sidebar, order: 10,
-                             rule: .folders(includeContainer: true, max: 1),
-                             execution: .interactive(route: "editor")),
-        ]
+        []
     }
 
     public func dependencyStatuses(settings: ModuleSettings, checker: DependencyChecking) async -> [DependencyStatus] {
@@ -48,7 +43,9 @@ public final class SidebarModule: FinderPlusModule {
         do {
             let count = try backend.rows().count
             return [DependencyStatus(id: "lssharedfilelist", displayName: name,
-                                     state: .warning(SidebarText.undocumented.localized), detail: "\(count) items")]
+                                     state: .warning(SidebarText.undocumented.localized),
+                                     detail: LocalizedText(en: "\(count) items in Finder's sidebar", zhHans: "Finder 侧边栏共 \(count) 项",
+                                                           ko: "Finder 사이드바 항목 \(count)개").localized)]
         } catch {
             return [DependencyStatus(id: "lssharedfilelist", displayName: name, state: .missing, installHint: error.localizedDescription)]
         }
@@ -59,19 +56,12 @@ public final class SidebarModule: FinderPlusModule {
     }
 }
 
-extension SidebarModule: ModuleSettingsViewProviding, ModuleInteractiveUIProviding {
+extension SidebarModule: ModuleSettingsViewProviding {
     public var replacesGeneratedSettings: Bool { true }
 
     @MainActor
     public func makeSettingsView(context: ModuleUIContext) -> AnyView {
         AnyView(SidebarFavoritesView(context: context))
-    }
-
-    @MainActor
-    public func makeInteractiveView(route: String, context: ModuleUIContext) -> AnyView? {
-        let folder = context.selection.folders.first?.url ?? context.selection.container
-        return AnyView(SidebarIconEditor(context: context, initialPath: folder?.path, initialSymbol: nil, offersRestart: true,
-                                         onDone: { context.dismiss() }))
     }
 }
 
@@ -81,6 +71,9 @@ enum SidebarText {
                                             ko: "비공개 API — 변경 전에 백업합니다.")
     static let inSidebar = LocalizedText(en: "In Sidebar", zhHans: "在侧边栏", ko: "사이드바에 있음")
     static let disabled = LocalizedText(en: "Disabled", zhHans: "已停用", ko: "사용 안 함")
+    static let notInSidebar = LocalizedText(en: "Not in Sidebar", zhHans: "不在侧边栏", ko: "사이드바에 없음")
+    static let folderMissing = LocalizedText(en: "Folder Missing", zhHans: "文件夹不存在", ko: "폴더 없음")
+    static let readd = LocalizedText(en: "Add to Sidebar Again", zhHans: "重新添加到侧边栏", ko: "사이드바에 다시 추가")
     static let restartNeeded = LocalizedText(en: "Finder shows some of the new icons only after it restarts.",
                                              zhHans: "部分新图标需要重启 Finder 后才会显示。",
                                              ko: "일부 새 아이콘은 Finder를 다시 시작한 후에 표시됩니다.")
@@ -90,15 +83,15 @@ enum SidebarText {
     static let byOtherApp = LocalizedText(en: "Icon set by SidebarFavorites", zhHans: "图标由 SidebarFavorites 设置", ko: "SidebarFavorites가 설정한 아이콘")
     static let refresh = LocalizedText(en: "Refresh", zhHans: "刷新", ko: "새로 고침")
     static let edit = LocalizedText(en: "Edit…", zhHans: "编辑…", ko: "편집…")
-    static let delete = LocalizedText(en: "Remove", zhHans: "移除", ko: "제거")
+    static let delete = LocalizedText(en: "Delete Favorite", zhHans: "删除收藏", ko: "즐겨찾기 삭제")
     static let showInFinder = LocalizedText(en: "Show in Finder", zhHans: "在 Finder 中显示", ko: "Finder에서 보기")
     static let empty = LocalizedText(en: "No favorites yet. Click + to add a folder with an icon, or give a folder below its own icon.",
                                      zhHans: "还没有收藏。点击 + 添加文件夹并设置图标，或为下方已有的文件夹设置图标。",
                                      ko: "즐겨찾기가 없습니다. +를 눌러 폴더를 추가하거나 아래 폴더에 아이콘을 지정하세요.")
     static let footer = LocalizedText(
-        en: "Icons are monochrome SF Symbols, as Finder draws all sidebar icons. They stay after FinderPlus quits. Removing a favorite deletes the row only if FinderPlus added it; otherwise the folder's original icon comes back.",
-        zhHans: "图标为单色 SF Symbols（Finder 侧边栏图标都是单色）。FinderPlus 退出后图标依然保留。移除收藏时，只会删除 FinderPlus 自己添加的行；原本就在侧边栏的文件夹只恢复原图标。",
-        ko: "아이콘은 단색 SF Symbols입니다. FinderPlus가 종료되어도 유지됩니다. 즐겨찾기를 제거하면 FinderPlus가 추가한 행만 삭제되고, 원래 있던 폴더는 아이콘만 복원됩니다.")
+        en: "Icons are monochrome SF Symbols, as Finder draws all sidebar icons. They stay after FinderPlus quits. Deleting a favorite removes the row only if FinderPlus added it; otherwise the folder's original icon comes back. A folder you remove in Finder stays removed — use “Add to Sidebar Again” or delete the favorite.",
+        zhHans: "图标为单色 SF Symbols（Finder 侧边栏图标都是单色）。FinderPlus 退出后图标依然保留。删除收藏时，只会删除 FinderPlus 自己添加的行；原本就在侧边栏的文件夹只恢复原图标。在 Finder 中移除的文件夹不会被自动加回，可选择“重新添加到侧边栏”或删除收藏。",
+        ko: "아이콘은 단색 SF Symbols입니다. FinderPlus가 종료되어도 유지됩니다. 즐겨찾기를 삭제하면 FinderPlus가 추가한 행만 삭제되고, 원래 있던 폴더는 아이콘만 복원됩니다.")
     static let backups = LocalizedText(en: "Backups", zhHans: "备份", ko: "백업")
     static let restore = LocalizedText(en: "Restore", zhHans: "恢复", ko: "복원")
 }
@@ -112,6 +105,7 @@ struct SidebarFavoritesView: View {
     @State private var message: String?
     @State private var editing: EditorTarget?
     @State private var backups: [SidebarBackupStore.Backup] = []
+    @State private var problems: [UUID: String] = [:]
 
     struct EditorTarget: Identifiable {
         var id = UUID()
@@ -123,7 +117,9 @@ struct SidebarFavoritesView: View {
 
     private var otherRows: [SidebarRow] {
         rows.filter { row in
-            !row.isSpecial && row.path != nil && !favorites.contains { SidebarBackend.samePath(row.path, $0.path) }
+            // Saved searches such as Recents are not folders, so they can't take a folder icon.
+            !row.isSpecial && row.path != nil && row.url?.pathExtension != "cannedSearch"
+                && !favorites.contains { SidebarBackend.samePath(row.path, $0.path) }
         }
     }
 
@@ -206,20 +202,50 @@ struct SidebarFavoritesView: View {
         }
     }
 
+    private enum FavoriteStatus {
+        case shown, notInSidebar, folderMissing, disabled
+
+        var color: Color {
+            switch self {
+            case .shown: return .green
+            case .notInSidebar: return .orange
+            case .folderMissing: return .red
+            case .disabled: return .secondary
+            }
+        }
+
+        var text: String {
+            switch self {
+            case .shown: return SidebarText.inSidebar.localized
+            case .notInSidebar: return SidebarText.notInSidebar.localized
+            case .folderMissing: return SidebarText.folderMissing.localized
+            case .disabled: return SidebarText.disabled.localized
+            }
+        }
+    }
+
+    private func status(of favorite: SidebarFavorite) -> FavoriteStatus {
+        guard favorite.enabled else { return .disabled }
+        if rows.contains(where: { SidebarBackend.samePath($0.path, favorite.path) && $0.iconCode == favorite.code }) { return .shown }
+        return favorite.folderExists ? .notInSidebar : .folderMissing
+    }
+
     private func favoriteRow(_ favorite: SidebarFavorite) -> some View {
-        let shown = favorite.enabled && rows.contains { SidebarBackend.samePath($0.path, favorite.path) && $0.iconCode == favorite.code }
+        let status = status(of: favorite)
         return HStack(spacing: 12) {
-            SymbolTile(symbol: favorite.symbol, dimmed: !favorite.enabled)
+            SymbolTile(symbol: favorite.symbol, dimmed: status != .shown)
             VStack(alignment: .leading, spacing: 2) {
                 Text(favorite.name).font(.body.weight(.semibold))
                 Text(abbreviated(favorite.path)).font(.caption).foregroundStyle(.secondary)
                     .lineLimit(1).truncationMode(.middle)
+                if let problem = problems[favorite.id] {
+                    Text(problem).font(.caption2).foregroundStyle(.red).lineLimit(2)
+                }
             }
             Spacer()
             HStack(spacing: 4) {
-                Circle().fill(shown ? Color.green : Color.secondary).frame(width: 7, height: 7)
-                Text(shown ? SidebarText.inSidebar.localized : SidebarText.disabled.localized)
-                    .font(.caption).foregroundStyle(.secondary)
+                Circle().fill(status.color).frame(width: 7, height: 7)
+                Text(status.text).font(.caption).foregroundStyle(.secondary)
             }
             Toggle("", isOn: Binding(get: { favorite.enabled },
                                      set: { value in perform { try coordinator.setEnabled(favorite.id, value) } }))
@@ -227,8 +253,13 @@ struct SidebarFavoritesView: View {
                 .labelsHidden()
             Menu {
                 Button(SidebarText.edit.localized) { editing = EditorTarget(path: favorite.path, symbol: favorite.symbol) }
-                Button(SidebarText.showInFinder.localized) {
-                    NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: favorite.path)])
+                if status == .notInSidebar {
+                    Button(SidebarText.readd.localized) { perform { try coordinator.readd(favorite.id) } }
+                }
+                if favorite.folderExists {
+                    Button(SidebarText.showInFinder.localized) {
+                        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: favorite.path)])
+                    }
                 }
                 Divider()
                 Button(SidebarText.delete.localized, role: .destructive) { perform { try coordinator.delete(favorite.id) } }
@@ -237,6 +268,14 @@ struct SidebarFavoritesView: View {
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
+            if status == .notInSidebar || status == .folderMissing {
+                // Gone from Finder: offer deleting right here, not only in the menu.
+                Button(role: .destructive) { perform { try coordinator.delete(favorite.id) } } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.borderless)
+                .help(SidebarText.delete.localized)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -273,6 +312,7 @@ struct SidebarFavoritesView: View {
             favorites = result.favorites
             rows = result.rows
             needsRestart = needsRestart || result.needsFinderRestart
+            problems = result.problems
             message = nil
         } catch {
             message = error.localizedDescription
@@ -337,8 +377,6 @@ struct SidebarIconEditor: View {
     let context: ModuleUIContext
     let initialPath: String?
     let initialSymbol: String?
-    /// Opened from Finder's menu (no list page to show a banner): ask about restarting Finder directly.
-    var offersRestart = false
     let onDone: () -> Void
 
     @State private var path = ""
@@ -455,13 +493,6 @@ struct SidebarIconEditor: View {
         do {
             let result = try SidebarIconCoordinator(dataDirectory: context.dataDirectory).upsert(path: expanded, symbol: symbol)
             SidebarEditorState.lastResult = result.needsFinderRestart
-            if offersRestart, result.needsFinderRestart {
-                let alert = NSAlert()
-                alert.messageText = SidebarText.restartNeeded.localized
-                alert.addButton(withTitle: SidebarText.restartFinder.localized)
-                alert.addButton(withTitle: LocalizedText(en: "Later", zhHans: "稍后", ko: "나중에").localized)
-                if alert.runModal() == .alertFirstButtonReturn { SidebarIconCoordinator.restartFinder() }
-            }
             onDone()
         } catch {
             self.error = error.localizedDescription

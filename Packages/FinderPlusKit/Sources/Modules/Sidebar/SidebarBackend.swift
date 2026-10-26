@@ -1,3 +1,4 @@
+import FinderPlusCore
 import Foundation
 
 /// One row of Finder's sidebar Favorites, as read from `LSSharedFileList`.
@@ -21,6 +22,7 @@ public enum SidebarBackendError: LocalizedError {
     case unavailable
     case operationFailed(String)
     case rowNotFound
+    case folderMissing
 
     public var errorDescription: String? {
         switch self {
@@ -30,6 +32,10 @@ public enum SidebarBackendError: LocalizedError {
             return detail
         case .rowNotFound:
             return "That folder is no longer in Finder's sidebar."
+        case .folderMissing:
+            return LocalizedText(en: "The folder no longer exists (deleted, renamed or moved).",
+                                 zhHans: "文件夹已不存在（可能已被删除、重命名或移动）。",
+                                 ko: "폴더가 더 이상 없습니다(삭제, 이름 변경 또는 이동됨).").localized
         }
     }
 }

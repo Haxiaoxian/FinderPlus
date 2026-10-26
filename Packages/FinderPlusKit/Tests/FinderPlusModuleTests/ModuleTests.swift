@@ -74,7 +74,8 @@ final class BuiltinModuleContractTests: XCTestCase {
 
         let folder = actions(FinderSelection(context: .items, items: [SelectedItem(url: URL(fileURLWithPath: "/tmp/Project"), kind: .folder)],
                                              container: URL(fileURLWithPath: "/tmp")))
-        XCTAssertTrue(folder.isSuperset(of: ["terminal", "open.vs-code", "choose", "setIcon", "copyPath"]))
+        XCTAssertTrue(folder.isSuperset(of: ["terminal", "open.vs-code", "choose", "copyPath"]))
+        XCTAssertFalse(folder.contains("setIcon"), "sidebar icons are managed in FinderPlus, not from the context menu")
         XCTAssertFalse(folder.contains("open.coteditor"))
 
         let background = actions(.container(URL(fileURLWithPath: "/tmp")))
@@ -406,6 +407,34 @@ final class SidebarBackendTests: XCTestCase {
 
         let removed = try coordinator.delete(favorite.id)
         XCTAssertFalse(removed.rows.contains { SidebarBackend.samePath($0.path, target.path) })
+    }
+
+    /// Regression: a favorite whose row was removed in Finder (or whose folder moved) must still be
+    /// deletable, and refreshing must not put the row back behind the user's back.
+    func testStaleFavoritesCanBeDeletedAndAreNotReAdded() throws {
+        guard let backend = SidebarBackend(), (try? backend.rows()) != nil else { throw XCTSkip("LSSharedFileList is not available on this macOS") }
+        let data = try temporaryFolder()
+        let existing = try temporaryFolder()
+        let coordinator = SidebarIconCoordinator(dataDirectory: data)
+        defer {
+            coordinator.helper.unregister()
+            try? FileManager.default.removeItem(at: data)
+            try? FileManager.default.removeItem(at: existing)
+        }
+        let missing = SidebarFavorite(id: UUID(), path: "/tmp/fp-missing-\(UUID().uuidString)", symbol: "star", enabled: true,
+                                      code: "FZZ1", provenance: .managed)
+        let removedInFinder = SidebarFavorite(id: UUID(), path: existing.path, symbol: "leaf", enabled: true,
+                                              code: "FZZ2", provenance: .managed)
+        try coordinator.store.save([missing, removedInFinder])
+
+        let refreshed = try coordinator.refresh()
+        XCTAssertFalse(refreshed.rows.contains { SidebarBackend.samePath($0.path, existing.path) })
+        XCTAssertTrue(refreshed.problems.isEmpty)
+        XCTAssertFalse(missing.folderExists)
+
+        _ = try coordinator.delete(missing.id)
+        _ = try coordinator.delete(removedInFinder.id)
+        XCTAssertTrue(coordinator.store.load().isEmpty)
     }
 
     func testDisabledModulesRunNoDependencyChecks() async {

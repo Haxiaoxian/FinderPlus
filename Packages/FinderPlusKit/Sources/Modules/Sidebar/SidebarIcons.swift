@@ -21,6 +21,12 @@ public struct SidebarFavorite: Codable, Hashable, Identifiable, Sendable {
     public var provenance: Provenance
 
     public var name: String { URL(fileURLWithPath: path).lastPathComponent }
+
+    /// False when the folder was deleted, renamed or moved since it was added.
+    var folderExists: Bool {
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue
+    }
 }
 
 /// Persists favorites in the module's data folder.
@@ -182,15 +188,19 @@ final class SidebarIconCoordinator {
         var rows: [SidebarRow]
         /// A row already on screen changed icon, or an icon's symbol changed: Finder only redraws after a restart.
         var needsFinderRestart: Bool
+        /// Favorites that could not be applied, with the reason. One failing folder never blocks the others.
+        var problems: [UUID: String] = [:]
     }
 
     /// Adds or updates a favorite and applies it.
     func upsert(path: String, symbol: String, enabled: Bool = true) throws -> Result {
         var favorites = store.load()
         let standardized = URL(fileURLWithPath: path).standardizedFileURL.path
+        let id: UUID
         if let index = favorites.firstIndex(where: { SidebarBackend.samePath($0.path, standardized) }) {
             favorites[index].symbol = symbol
             favorites[index].enabled = enabled
+            id = favorites[index].id
         } else {
             let used = Set(favorites.map(\.code))
             // A folder the user already had in the sidebar stays theirs: FinderPlus will only ever
@@ -199,36 +209,70 @@ final class SidebarIconCoordinator {
             if let backend = SidebarBackend(), let rows = try? backend.rows() {
                 alreadyInSidebar = rows.contains { SidebarBackend.samePath($0.path, standardized) }
             }
-            favorites.append(SidebarFavorite(id: UUID(), path: standardized, symbol: symbol, enabled: enabled,
+            id = UUID()
+            favorites.append(SidebarFavorite(id: id, path: standardized, symbol: symbol, enabled: enabled,
                                              code: SidebarIconCode.allocate(avoiding: used),
                                              provenance: alreadyInSidebar ? .adopted : .managed))
         }
-        return try apply(favorites)
+        let result = try apply(favorites, inserting: [id])
+        // Saved either way, so the list shows it; the editor reports why it isn't in the sidebar.
+        if let problem = result.problems[id] { throw SidebarBackendError.operationFailed(problem) }
+        return result
     }
 
+    /// Turning a favorite on (re)adds its row if it is missing from the sidebar.
     func setEnabled(_ id: UUID, _ enabled: Bool) throws -> Result {
         var favorites = store.load()
         guard let index = favorites.firstIndex(where: { $0.id == id }) else { return try apply(favorites) }
         favorites[index].enabled = enabled
-        return try apply(favorites)
+        return try apply(favorites, inserting: enabled ? [id] : [])
     }
 
-    /// Deletes a favorite: its row is removed if FinderPlus added it, otherwise its icon is restored.
+    /// Adds the row again after it was removed in Finder.
+    func readd(_ id: UUID) throws -> Result {
+        try setEnabled(id, true)
+    }
+
+    /// Deletes a favorite from FinderPlus. Its row is removed if FinderPlus added it, otherwise its
+    /// icon is restored. The favorite is always deleted, even if its folder or row is gone.
     func delete(_ id: UUID) throws -> Result {
         var favorites = store.load()
-        guard let index = favorites.firstIndex(where: { $0.id == id }) else { return try apply(favorites) }
-        favorites[index].enabled = false
-        var result = try apply(favorites)
-        result.favorites.removeAll { $0.id == id }
-        try store.save(result.favorites)
-        return result
+        guard let favorite = favorites.first(where: { $0.id == id }) else { return try apply(favorites) }
+        favorites.removeAll { $0.id == id }
+        var needsRestart = false
+        var cleanupError: Error?
+        var rows: [SidebarRow] = []
+        if let backend = SidebarBackend(), let before = try? backend.rows() {
+            rows = before
+            if let row = before.first(where: { SidebarBackend.samePath($0.path, favorite.path) }), row.iconCode == favorite.code {
+                try? backups.createBackup(reason: "before-remove")
+                do {
+                    if favorite.provenance == .managed {
+                        try backend.remove(path: row.path ?? favorite.path)
+                    } else {
+                        try backend.clearIconCode(forPath: row.path ?? favorite.path)
+                        needsRestart = true
+                    }
+                } catch {
+                    cleanupError = error
+                }
+            }
+            rows = (try? backend.rows()) ?? before
+        }
+        try store.save(favorites)
+        try? helper.update(for: favorites)
+        if let cleanupError { throw cleanupError }
+        return Result(favorites: favorites, rows: rows, needsFinderRestart: needsRestart)
     }
 
+    /// Re-applies icons to rows that are in the sidebar. Rows the user removed in Finder are not
+    /// added back behind their back; the list shows them as "not in sidebar" instead.
     func refresh() throws -> Result {
         try apply(store.load())
     }
 
-    private func apply(_ input: [SidebarFavorite]) throws -> Result {
+    /// - Parameter inserting: favorites whose row may be added if it is missing.
+    private func apply(_ input: [SidebarFavorite], inserting: Set<UUID> = []) throws -> Result {
         guard let backend = SidebarBackend() else { throw SidebarBackendError.unavailable }
         var favorites = input
         let previouslyDeclared = Dictionary(store.load().filter(\.enabled).map { ($0.code, $0.symbol) }, uniquingKeysWith: { a, _ in a })
@@ -241,34 +285,41 @@ final class SidebarIconCoordinator {
         try helper.update(for: favorites)
 
         var needsRestart = false
+        var problems: [UUID: String] = [:]
         for index in favorites.indices {
             let favorite = favorites[index]
             let row = before.first { SidebarBackend.samePath($0.path, favorite.path) }
-            if favorite.enabled {
-                if let row {
-                    if row.iconCode != favorite.code {
-                        try backend.setIconCode(favorite.code, forPath: row.path ?? favorite.path)
-                        needsRestart = true
-                    } else if previouslyDeclared[favorite.code] != favorite.symbol {
-                        needsRestart = true // same code, new symbol: Finder caches the old one
+            do {
+                if favorite.enabled {
+                    if let row {
+                        if row.iconCode != favorite.code {
+                            try backend.setIconCode(favorite.code, forPath: row.path ?? favorite.path)
+                            needsRestart = true
+                        } else if previouslyDeclared[favorite.code] != favorite.symbol {
+                            needsRestart = true // same code, new symbol: Finder caches the old one
+                        }
+                    } else if inserting.contains(favorite.id) {
+                        guard favorite.folderExists else { throw SidebarBackendError.folderMissing }
+                        // A row inserted with its code already set draws correctly straight away.
+                        let added = try backend.insert(URL(fileURLWithPath: favorite.path, isDirectory: true),
+                                                       name: favorite.name, iconCode: favorite.code)
+                        if !added { favorites[index].provenance = .adopted }
                     }
-                } else {
-                    // A row inserted with its code already set draws correctly straight away.
-                    let added = try backend.insert(URL(fileURLWithPath: favorite.path, isDirectory: true),
-                                                   name: favorite.name, iconCode: favorite.code)
-                    if !added { favorites[index].provenance = .adopted }
+                } else if let row, row.iconCode == favorite.code {
+                    if favorite.provenance == .managed {
+                        try backend.remove(path: row.path ?? favorite.path)
+                    } else {
+                        try backend.clearIconCode(forPath: row.path ?? favorite.path)
+                        needsRestart = true
+                    }
                 }
-            } else if let row, row.iconCode == favorite.code {
-                if favorite.provenance == .managed {
-                    try backend.remove(path: row.path ?? favorite.path)
-                } else {
-                    try backend.clearIconCode(forPath: row.path ?? favorite.path)
-                    needsRestart = true
-                }
+            } catch {
+                problems[favorite.id] = error.localizedDescription
             }
         }
         try store.save(favorites)
-        return Result(favorites: favorites, rows: (try? backend.rows()) ?? before, needsFinderRestart: needsRestart)
+        return Result(favorites: favorites, rows: (try? backend.rows()) ?? before, needsFinderRestart: needsRestart,
+                      problems: problems)
     }
 
     /// Takes an existing sidebar row under FinderPlus' management without moving or renaming it.
