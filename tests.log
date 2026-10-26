@@ -1,0 +1,439 @@
+Fetching https://github.com/swiftlang/swift-markdown.git
+[1/7790] Fetching swift-markdown
+Fetched https://github.com/swiftlang/swift-markdown.git from cache (0.79s)
+Computing version for https://github.com/swiftlang/swift-markdown.git
+Computed https://github.com/swiftlang/swift-markdown.git at 0.6.0 (5.03s)
+Fetching https://github.com/swiftlang/swift-cmark.git
+[1/18660] Fetching swift-cmark
+Fetched https://github.com/swiftlang/swift-cmark.git from cache (1.04s)
+Computing version for https://github.com/swiftlang/swift-cmark.git
+Computed https://github.com/swiftlang/swift-cmark.git at 0.9.0 (1.52s)
+Creating working copy for https://github.com/swiftlang/swift-cmark.git
+Working copy of https://github.com/swiftlang/swift-cmark.git resolved at 0.9.0
+Creating working copy for https://github.com/swiftlang/swift-markdown.git
+Working copy of https://github.com/swiftlang/swift-markdown.git resolved at 0.6.0
+Building for debugging...
+[0/63] /Users/runner/work/FinderPlus/FinderPlus/Packages/FinderPlusKit/.build/arm64-apple-macosx/debug/FinderPlusKitPackageTests.derived/runner.swift
+[1/63] Write swift-version--79AA4F9932D1E87A.txt
+[2/63] Compiling cmark-gfm-extensions tagfilter.c
+[3/63] Compiling cmark-gfm-extensions table.c
+[4/63] Compiling cmark-gfm-extensions strikethrough.c
+[5/63] Compiling cmark-gfm-extensions ext_scanners.c
+[6/63] Compiling cmark-gfm-extensions tasklist.c
+[7/63] Compiling cmark-gfm-extensions core-extensions.c
+[8/63] Compiling cmark-gfm xml.c
+[9/63] Compiling cmark-gfm syntax_extension.c
+[10/63] Compiling cmark-gfm utf8.c
+[11/63] Compiling cmark-gfm render.c
+[12/63] Compiling cmark-gfm registry.c
+[13/63] Compiling cmark-gfm scanners.c
+[14/63] Compiling cmark-gfm references.c
+[15/63] Compiling cmark-gfm plugin.c
+[16/63] Compiling cmark-gfm plaintext.c
+[17/63] Compiling cmark-gfm map.c
+[18/63] Compiling cmark-gfm node.c
+[19/63] Compiling cmark-gfm linked_list.c
+[20/63] Compiling cmark-gfm man.c
+[21/63] Compiling cmark-gfm latex.c
+[22/63] Compiling cmark-gfm iterator.c
+[23/63] Compiling cmark-gfm html.c
+[24/63] Compiling cmark-gfm inlines.c
+[25/63] Compiling cmark-gfm houdini_html_u.c
+[26/63] Compiling cmark-gfm houdini_html_e.c
+[27/63] Compiling cmark-gfm houdini_href_e.c
+[28/63] Compiling cmark-gfm footnotes.c
+[29/63] Compiling cmark-gfm-extensions autolink.c
+[30/63] Compiling cmark-gfm cmark_ctype.c
+[31/63] Compiling cmark-gfm commonmark.c
+[32/63] Compiling cmark-gfm cmark.c
+[33/63] Compiling cmark-gfm buffer.c
+[33/63] Write sources
+[35/63] Write FinderPlusPDFRenderer-entitlement.plist
+[38/63] Write sources
+[39/63] Compiling cmark-gfm arena.c
+[40/63] Copying web
+[40/63] Copying Info.plist
+[40/63] Write sources
+[56/63] Compiling cmark-gfm blocks.c
+[57/63] Compiling CAtomic CAtomic.c
+[59/130] Emitting module FinderPlusCore
+[60/138] Emitting module Markdown
+[61/161] Compiling Markdown RawMarkup.swift
+[62/161] Compiling Markdown BlockDirective.swift
+[63/161] Compiling Markdown BlockQuote.swift
+[64/161] Compiling Markdown CustomBlock.swift
+[65/161] Compiling Markdown DoxygenDiscussion.swift
+[66/161] Compiling Markdown DoxygenNote.swift
+[67/161] Compiling Markdown DoxygenParameter.swift
+[68/161] Compiling Markdown DoxygenReturns.swift
+[69/161] Compiling FinderPlusCore FileNaming.swift
+[70/161] Compiling FinderPlusCore ProcessRunner.swift
+[71/161] Compiling FinderPlusCore ShellQuoting.swift
+[72/161] Compiling FinderPlusCore ActionRequest.swift
+[73/161] Compiling FinderPlusCore ExtensionDiagnostics.swift
+[74/161] Compiling FinderPlusCore ModuleSettings.swift
+[75/161] Compiling FinderPlusCore SettingValue.swift
+[76/161] Compiling FinderPlusCore SettingsSchema.swift
+[77/161] Compiling Markdown ChildIndexPath.swift
+[78/161] Compiling Markdown DirectiveArgument.swift
+[79/161] Compiling Markdown Document.swift
+[80/161] Compiling Markdown LiteralMarkup.swift
+[81/161] Compiling Markdown Markup.swift
+[82/161] Compiling Markdown MarkupChildren.swift
+[83/161] Compiling Markdown MarkupData.swift
+[84/161] Compiling Markdown PlainTextConvertibleMarkup.swift
+[86/164] Compiling Markdown Table.swift
+[87/164] Compiling Markdown TableBody.swift
+[88/164] Compiling Markdown TableCell.swift
+[89/164] Compiling Markdown TableCellContainer.swift
+[90/164] Compiling Markdown TableHead.swift
+[91/164] Compiling Markdown TableRow.swift
+[92/164] Compiling Markdown Replacement.swift
+[93/164] Compiling Markdown SourceLocation.swift
+[94/164] Compiling Markdown Emphasis.swift
+[95/164] Compiling Markdown Image.swift
+[96/164] Compiling Markdown InlineAttributes.swift
+[97/164] Compiling Markdown Link.swift
+[98/164] Compiling Markdown Strikethrough.swift
+[99/164] Compiling Markdown Strong.swift
+[100/164] Compiling Markdown CustomInline.swift
+[101/164] Compiling Markdown InlineCode.swift
+[102/164] Compiling Markdown InlineHTML.swift
+[103/164] Compiling Markdown LineBreak.swift
+[104/164] Compiling Markdown SoftBreak.swift
+[105/164] Compiling Markdown SymbolLink.swift
+[106/164] Compiling Markdown Text.swift
+[107/164] Compiling Markdown Aside.swift
+[131/164] Compiling FinderPlusPDFRenderer main.swift
+[132/164] Emitting module FinderPlusPDFRenderer
+[133/164] Compiling FinderPlusPDFRenderer PDFRenderer.swift
+[134/171] Compiling Markdown BlockDirectiveParser.swift
+[135/171] Compiling Markdown CommonMarkConverter.swift
+[136/171] Compiling Markdown LazySplitLines.swift
+[137/171] Compiling Markdown ParseOptions.swift
+[138/171] Compiling Markdown RangeAdjuster.swift
+[139/171] Compiling Markdown RangerTracker.swift
+[140/171] Compiling Markdown MarkupRewriter.swift
+[141/171] Compiling Markdown BasicBlockContainer.swift
+[142/171] Compiling Markdown BasicInlineContainer.swift
+[143/171] Compiling Markdown BlockContainer.swift
+[144/171] Compiling Markdown BlockMarkup.swift
+[145/171] Compiling Markdown InlineContainer.swift
+[146/171] Compiling Markdown InlineMarkup.swift
+[147/171] Compiling Markdown ListItemContainer.swift
+[148/171] Compiling Markdown AtomicCounter.swift
+[149/171] Compiling Markdown CharacterExtensions.swift
+[150/171] Compiling Markdown CollectionExtensions.swift
+[151/171] Compiling Markdown StringExtensions.swift
+[152/171] Compiling Markdown MarkupVisitor.swift
+[153/171] Compiling Markdown MarkupWalker.swift
+[154/171] Compiling Markdown HTMLFormatter.swift
+[155/171] Compiling Markdown MarkupFormatter.swift
+[156/171] Compiling Markdown MarkupTreeDumper.swift
+[157/171] Emitting module FinderPlusEngine
+[157/173] Write Objects.LinkFileList
+[158/173] Linking FinderPlusPDFRenderer
+[159/173] Applying FinderPlusPDFRenderer
+[161/173] Compiling FinderPlusEngine ScriptPackageModule.swift
+[162/173] Compiling FinderPlusEngine TaskStore.swift
+[163/173] Compiling FinderPlusEngine DependencyChecker.swift
+[164/173] Compiling FinderPlusEngine ExecutionEngine.swift
+[165/173] Compiling FinderPlusEngine MacSystemServices.swift
+[166/173] Compiling FinderPlusEngine ManagedPythonEnvironments.swift
+[167/173] Compiling FinderPlusEngine ModuleRegistry.swift
+[168/173] Compiling FinderPlusEngine ScriptPackage.swift
+[169/176] Emitting module FinderPlusUI
+[170/176] Compiling FinderPlusUI SchemaForm.swift
+[171/176] Compiling FinderPlusUI ModuleUI.swift
+[172/181] Emitting module FPQuickOpen
+[173/181] Compiling FPQuickOpen QuickOpenModule.swift
+[174/183] Compiling FPSidebar SidebarBackend.swift
+[175/183] Emitting module FPSidebar
+[176/183] Compiling FPSidebar SidebarIcons.swift
+/Users/runner/work/FinderPlus/FinderPlus/Packages/FinderPlusKit/Sources/Modules/Sidebar/SidebarIcons.swift:276:17: warning: result of 'try?' is unused
+274 |             rows = before
+275 |             if let row = before.first(where: { SidebarBackend.samePath($0.path, favorite.path) }), row.iconCode == favorite.code {
+276 |                 try? backups.createBackup(reason: "before-remove")
+    |                 `- warning: result of 'try?' is unused
+277 |                 do {
+278 |                     if favorite.provenance == .managed {
+
+/Users/runner/work/FinderPlus/FinderPlus/Packages/FinderPlusKit/Sources/Modules/Sidebar/SidebarIcons.swift:291:9: warning: result of 'try?' is unused
+289 |         }
+290 |         try store.save(favorites)
+291 |         try? helper.update(for: favorites)
+    |         `- warning: result of 'try?' is unused
+292 |         if let cleanupError { throw cleanupError }
+293 |         return Result(favorites: favorites, rows: rows, needsFinderRestart: needsRestart)
+
+/Users/runner/work/FinderPlus/FinderPlus/Packages/FinderPlusKit/Sources/Modules/Sidebar/SidebarIcons.swift:313:13: warning: result of 'try?' is unused
+311 |         let before = try backend.rows()
+312 |         if before.contains(where: { row in favorites.contains { SidebarBackend.samePath(row.path, $0.path) } }) {
+313 |             try? backups.createBackup(reason: "before-icons")
+    |             `- warning: result of 'try?' is unused
+314 |         }
+315 | 
+[177/184] Compiling FPPathTools PathToolsModule.swift
+[178/184] Emitting module FPPathTools
+[179/188] Compiling FPMarkdownPDF MarkdownHTMLRenderer.swift
+[180/188] Compiling FPMarkdownPDF MarkdownPDFModule.swift
+[181/188] Compiling FPMarkdownPDF PDFRendererHelper.swift
+[182/188] Emitting module FPMarkdownPDF
+[183/189] Compiling FPMarkdownPDF resource_bundle_accessor.swift
+[184/191] Compiling FPSidebar SidebarModule.swift
+[185/193] Compiling FPMarkItDown MarkItDownModule.swift
+[186/193] Emitting module FPMarkItDown
+[187/197] Compiling FPImageCompressor ImageCompressorModule.swift
+[188/197] Emitting module FPImageCompressor
+[189/201] Emitting module FPFolderIcon
+[190/201] Compiling FPFolderIcon FolderIconRenderer.swift
+[191/201] Compiling FPFileCreator DocumentFactory.swift
+[192/201] Compiling FPFileCreator FileCreatorModule.swift
+[193/202] Emitting module FPFileCreator
+[196/202] Compiling FPFileCreator TemplatesLibraryView.swift
+[197/203] Compiling FinderPlusCoreTests InfrastructureTests.swift
+[198/203] Emitting module FinderPlusCoreTests
+[199/203] Compiling FinderPlusCoreTests CoreModelTests.swift
+[200/204] Compiling FinderPlusCoreTests ScriptPackageTests.swift
+[201/206] Compiling FPFileCreator ZipArchiveWriter.swift
+[202/206] Emitting module FPAppearance
+[203/206] Compiling FPAppearance AppearanceModule.swift
+[204/206] Compiling FPFolderIcon FolderIconViews.swift
+[205/208] Emitting module FinderPlusBuiltinModules
+[206/208] Compiling FinderPlusBuiltinModules BuiltinModules.swift
+[207/211] Compiling FinderPlusModuleTests PythonRuntimeTests.swift
+[208/211] Emitting module FinderPlusModuleTests
+[209/211] Compiling FinderPlusModuleTests ModuleTests.swift
+[210/212] Compiling FinderPlusModuleTests TestSupport.swift
+[211/214] Compiling FinderPlusKitPackageTests runner.swift
+[212/214] Emitting module FinderPlusKitPackageTests
+[212/214] Write Objects.LinkFileList
+[213/214] Linking FinderPlusKitPackageTests
+Build complete! (37.45s)
+Test Suite 'All tests' started at 2026-10-26 10:46:46.763.
+Test Suite 'FinderPlusKitPackageTests.xctest' started at 2026-10-26 10:46:46.765.
+Test Suite 'BuiltinModuleContractTests' started at 2026-10-26 10:46:46.765.
+Test Case '-[FinderPlusModuleTests.BuiltinModuleContractTests testManifestsAreUniqueAndSerializable]' started.
+Test Case '-[FinderPlusModuleTests.BuiltinModuleContractTests testManifestsAreUniqueAndSerializable]' passed (0.027 seconds).
+Test Case '-[FinderPlusModuleTests.BuiltinModuleContractTests testMenuForCommonSelections]' started.
+Test Case '-[FinderPlusModuleTests.BuiltinModuleContractTests testMenuForCommonSelections]' passed (0.008 seconds).
+Test Suite 'BuiltinModuleContractTests' passed at 2026-10-26 10:46:46.800.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.035 (0.035) seconds
+Test Suite 'CloudSupportTests' started at 2026-10-26 10:46:46.800.
+Test Case '-[FinderPlusModuleTests.CloudSupportTests testCloudPathsAreRecognized]' started.
+Test Case '-[FinderPlusModuleTests.CloudSupportTests testCloudPathsAreRecognized]' passed (0.000 seconds).
+Test Case '-[FinderPlusModuleTests.CloudSupportTests testOldSnapshotsWithoutMonitoredDirectoriesStillDecode]' started.
+Test Case '-[FinderPlusModuleTests.CloudSupportTests testOldSnapshotsWithoutMonitoredDirectoriesStillDecode]' passed (0.000 seconds).
+Test Case '-[FinderPlusModuleTests.CloudSupportTests testUnreadableItemsAreGuessedFromTheirName]' started.
+Test Case '-[FinderPlusModuleTests.CloudSupportTests testUnreadableItemsAreGuessedFromTheirName]' passed (0.000 seconds).
+Test Suite 'CloudSupportTests' passed at 2026-10-26 10:46:46.801.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'ConfigurationStoreTests' started at 2026-10-26 10:46:46.801.
+Test Case '-[FinderPlusCoreTests.ConfigurationStoreTests testExperimentalModulesStartDisabled]' started.
+Test Case '-[FinderPlusCoreTests.ConfigurationStoreTests testExperimentalModulesStartDisabled]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.ConfigurationStoreTests testSaveLoadExportImport]' started.
+Test Case '-[FinderPlusCoreTests.ConfigurationStoreTests testSaveLoadExportImport]' passed (0.006 seconds).
+Test Case '-[FinderPlusCoreTests.ConfigurationStoreTests testUnreadableFileFallsBackToDefaults]' started.
+Test Case '-[FinderPlusCoreTests.ConfigurationStoreTests testUnreadableFileFallsBackToDefaults]' passed (0.002 seconds).
+Test Suite 'ConfigurationStoreTests' passed at 2026-10-26 10:46:46.809.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.008 (0.008) seconds
+Test Suite 'DocumentFactoryTests' started at 2026-10-26 10:46:46.809.
+Test Case '-[FinderPlusModuleTests.DocumentFactoryTests testBlankPDFOpensWithOnePage]' started.
+Test Case '-[FinderPlusModuleTests.DocumentFactoryTests testBlankPDFOpensWithOnePage]' passed (0.002 seconds).
+Test Case '-[FinderPlusModuleTests.DocumentFactoryTests testCRC32]' started.
+Test Case '-[FinderPlusModuleTests.DocumentFactoryTests testCRC32]' passed (0.001 seconds).
+Test Case '-[FinderPlusModuleTests.DocumentFactoryTests testOfficeDocumentsAreValidZipArchives]' started.
+Test Case '-[FinderPlusModuleTests.DocumentFactoryTests testOfficeDocumentsAreValidZipArchives]' passed (0.250 seconds).
+Test Suite 'DocumentFactoryTests' passed at 2026-10-26 10:46:47.062.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.253 (0.253) seconds
+Test Suite 'FileCreatorTests' started at 2026-10-26 10:46:47.062.
+Test Case '-[FinderPlusModuleTests.FileCreatorTests testCreatesUniqueValidFiles]' started.
+Test Case '-[FinderPlusModuleTests.FileCreatorTests testCreatesUniqueValidFiles]' passed (0.003 seconds).
+Test Case '-[FinderPlusModuleTests.FileCreatorTests testCustomTypes]' started.
+Test Case '-[FinderPlusModuleTests.FileCreatorTests testCustomTypes]' passed (0.000 seconds).
+Test Case '-[FinderPlusModuleTests.FileCreatorTests testRenameFailureDoesNotFailCreation]' started.
+Test Case '-[FinderPlusModuleTests.FileCreatorTests testRenameFailureDoesNotFailCreation]' passed (0.001 seconds).
+Test Case '-[FinderPlusModuleTests.FileCreatorTests testTemplatesAppearInMenu]' started.
+Test Case '-[FinderPlusModuleTests.FileCreatorTests testTemplatesAppearInMenu]' passed (0.002 seconds).
+Test Suite 'FileCreatorTests' passed at 2026-10-26 10:46:47.069.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.006 (0.006) seconds
+Test Suite 'FileNamingTests' started at 2026-10-26 10:46:47.069.
+Test Case '-[FinderPlusCoreTests.FileNamingTests testAppendsNumbersLikeFinder]' started.
+Test Case '-[FinderPlusCoreTests.FileNamingTests testAppendsNumbersLikeFinder]' passed (0.001 seconds).
+Test Case '-[FinderPlusCoreTests.FileNamingTests testPatternExpansion]' started.
+Test Case '-[FinderPlusCoreTests.FileNamingTests testPatternExpansion]' passed (0.002 seconds).
+Test Case '-[FinderPlusCoreTests.FileNamingTests testSanitizes]' started.
+Test Case '-[FinderPlusCoreTests.FileNamingTests testSanitizes]' passed (0.000 seconds).
+Test Suite 'FileNamingTests' passed at 2026-10-26 10:46:47.071.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'LocalizedTextTests' started at 2026-10-26 10:46:47.071.
+Test Case '-[FinderPlusCoreTests.LocalizedTextTests testDecodesStringOrDictionary]' started.
+Test Case '-[FinderPlusCoreTests.LocalizedTextTests testDecodesStringOrDictionary]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.LocalizedTextTests testPlaceholderReplacement]' started.
+Test Case '-[FinderPlusCoreTests.LocalizedTextTests testPlaceholderReplacement]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.LocalizedTextTests testResolvesRegionalVariants]' started.
+Test Case '-[FinderPlusCoreTests.LocalizedTextTests testResolvesRegionalVariants]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.LocalizedTextTests testTraditionalChineseDoesNotPickSimplified]' started.
+Test Case '-[FinderPlusCoreTests.LocalizedTextTests testTraditionalChineseDoesNotPickSimplified]' passed (0.000 seconds).
+Test Suite 'LocalizedTextTests' passed at 2026-10-26 10:46:47.072.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'MarkdownRendererTests' started at 2026-10-26 10:46:47.072.
+Test Case '-[FinderPlusModuleTests.MarkdownRendererTests testCodeIsLeftAlone]' started.
+Test Case '-[FinderPlusModuleTests.MarkdownRendererTests testCodeIsLeftAlone]' passed (0.001 seconds).
+Test Case '-[FinderPlusModuleTests.MarkdownRendererTests testCurrencyIsNotMath]' started.
+Test Case '-[FinderPlusModuleTests.MarkdownRendererTests testCurrencyIsNotMath]' passed (0.000 seconds).
+Test Case '-[FinderPlusModuleTests.MarkdownRendererTests testDocumentReferencesBundledAssets]' started.
+Test Case '-[FinderPlusModuleTests.MarkdownRendererTests testDocumentReferencesBundledAssets]' passed (0.001 seconds).
+Test Case '-[FinderPlusModuleTests.MarkdownRendererTests testExportRunsInHelperProcess]' started.
+Test Case '-[FinderPlusModuleTests.MarkdownRendererTests testExportRunsInHelperProcess]' passed (2.640 seconds).
+Test Case '-[FinderPlusModuleTests.MarkdownRendererTests testMathIsProtectedFromEmphasis]' started.
+Test Case '-[FinderPlusModuleTests.MarkdownRendererTests testMathIsProtectedFromEmphasis]' passed (0.001 seconds).
+Test Case '-[FinderPlusModuleTests.MarkdownRendererTests testTablesAndChinese]' started.
+Test Case '-[FinderPlusModuleTests.MarkdownRendererTests testTablesAndChinese]' passed (0.001 seconds).
+Test Suite 'MarkdownRendererTests' passed at 2026-10-26 10:46:49.715.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 2.643 (2.643) seconds
+Test Suite 'MenuRuleTests' started at 2026-10-26 10:46:49.715.
+Test Case '-[FinderPlusCoreTests.MenuRuleTests testAllItemsMustMatchByDefault]' started.
+Test Case '-[FinderPlusCoreTests.MenuRuleTests testAllItemsMustMatchByDefault]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.MenuRuleTests testContainerContext]' started.
+Test Case '-[FinderPlusCoreTests.MenuRuleTests testContainerContext]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.MenuRuleTests testDestinationFolder]' started.
+Test Case '-[FinderPlusCoreTests.MenuRuleTests testDestinationFolder]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.MenuRuleTests testExtensionsAreCaseInsensitive]' started.
+Test Case '-[FinderPlusCoreTests.MenuRuleTests testExtensionsAreCaseInsensitive]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.MenuRuleTests testFoldersIgnoreExtensionFilterWhenAllowed]' started.
+Test Case '-[FinderPlusCoreTests.MenuRuleTests testFoldersIgnoreExtensionFilterWhenAllowed]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.MenuRuleTests testSelectionLimits]' started.
+Test Case '-[FinderPlusCoreTests.MenuRuleTests testSelectionLimits]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.MenuRuleTests testUniformTypeConformance]' started.
+Test Case '-[FinderPlusCoreTests.MenuRuleTests testUniformTypeConformance]' passed (0.000 seconds).
+Test Suite 'MenuRuleTests' passed at 2026-10-26 10:46:49.717.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'MenuSnapshotTests' started at 2026-10-26 10:46:49.717.
+Test Case '-[FinderPlusCoreTests.MenuSnapshotTests testGroupsAreOrderedAndHostOnlyActionsExcluded]' started.
+Test Case '-[FinderPlusCoreTests.MenuSnapshotTests testGroupsAreOrderedAndHostOnlyActionsExcluded]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.MenuSnapshotTests testOverridesRenameHideAndMove]' started.
+Test Case '-[FinderPlusCoreTests.MenuSnapshotTests testOverridesRenameHideAndMove]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.MenuSnapshotTests testResolverFiltersBySelection]' started.
+Test Case '-[FinderPlusCoreTests.MenuSnapshotTests testResolverFiltersBySelection]' passed (0.002 seconds).
+Test Case '-[FinderPlusCoreTests.MenuSnapshotTests testShortTitles]' started.
+Test Case '-[FinderPlusCoreTests.MenuSnapshotTests testShortTitles]' passed (0.000 seconds).
+Test Suite 'MenuSnapshotTests' passed at 2026-10-26 10:46:49.720.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'PathFormatterTests' started at 2026-10-26 10:46:49.720.
+Test Case '-[FinderPlusModuleTests.PathFormatterTests testDefaultIsOnePathPerLine]' started.
+Test Case '-[FinderPlusModuleTests.PathFormatterTests testDefaultIsOnePathPerLine]' passed (0.000 seconds).
+Test Case '-[FinderPlusModuleTests.PathFormatterTests testNamesAreWrapped]' started.
+Test Case '-[FinderPlusModuleTests.PathFormatterTests testNamesAreWrapped]' passed (0.000 seconds).
+Test Case '-[FinderPlusModuleTests.PathFormatterTests testQuotingAndSeparators]' started.
+Test Case '-[FinderPlusModuleTests.PathFormatterTests testQuotingAndSeparators]' passed (0.000 seconds).
+Test Case '-[FinderPlusModuleTests.PathFormatterTests testWrappingCharacters]' started.
+Test Case '-[FinderPlusModuleTests.PathFormatterTests testWrappingCharacters]' passed (0.000 seconds).
+Test Suite 'PathFormatterTests' passed at 2026-10-26 10:46:49.721.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'ProcessRunnerTests' started at 2026-10-26 10:46:49.721.
+Test Case '-[FinderPlusCoreTests.ProcessRunnerTests testArgumentsAreNotInterpretedByAShell]' started.
+Test Case '-[FinderPlusCoreTests.ProcessRunnerTests testArgumentsAreNotInterpretedByAShell]' passed (0.027 seconds).
+Test Case '-[FinderPlusCoreTests.ProcessRunnerTests testCapturesOutputAndExitCode]' started.
+Test Case '-[FinderPlusCoreTests.ProcessRunnerTests testCapturesOutputAndExitCode]' passed (0.012 seconds).
+Test Case '-[FinderPlusCoreTests.ProcessRunnerTests testNeverLosesOutputOfFastProcesses]' started.
+Test Case '-[FinderPlusCoreTests.ProcessRunnerTests testNeverLosesOutputOfFastProcesses]' passed (1.294 seconds).
+Test Case '-[FinderPlusCoreTests.ProcessRunnerTests testStreamsLargeOutputAndLines]' started.
+Test Case '-[FinderPlusCoreTests.ProcessRunnerTests testStreamsLargeOutputAndLines]' passed (0.071 seconds).
+Test Case '-[FinderPlusCoreTests.ProcessRunnerTests testTimeout]' started.
+Test Case '-[FinderPlusCoreTests.ProcessRunnerTests testTimeout]' passed (0.314 seconds).
+Test Suite 'ProcessRunnerTests' passed at 2026-10-26 10:46:51.440.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 1.719 (1.719) seconds
+Test Suite 'PythonRuntimeTests' started at 2026-10-26 10:46:51.440.
+Test Case '-[FinderPlusModuleTests.PythonRuntimeTests testOneClickMarkItDownSetupAndConversion]' started.
+Test Case '-[FinderPlusModuleTests.PythonRuntimeTests testOneClickMarkItDownSetupAndConversion]' passed (7.702 seconds).
+Test Suite 'PythonRuntimeTests' passed at 2026-10-26 10:46:59.143.
+	 Executed 1 test, with 0 failures (0 unexpected) in 7.702 (7.702) seconds
+Test Suite 'QuickOpenRuleTests' started at 2026-10-26 10:46:59.143.
+Test Case '-[FinderPlusModuleTests.QuickOpenRuleTests testAllFilesStillPossible]' started.
+Test Case '-[FinderPlusModuleTests.QuickOpenRuleTests testAllFilesStillPossible]' passed (0.000 seconds).
+Test Case '-[FinderPlusModuleTests.QuickOpenRuleTests testLegacyEntriesKeepTheirMeaning]' started.
+Test Case '-[FinderPlusModuleTests.QuickOpenRuleTests testLegacyEntriesKeepTheirMeaning]' passed (0.002 seconds).
+Test Suite 'QuickOpenRuleTests' passed at 2026-10-26 10:46:59.145.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'RequestInboxTests' started at 2026-10-26 10:46:59.145.
+Test Case '-[FinderPlusCoreTests.RequestInboxTests testExpiredRequestsAreDropped]' started.
+Test Case '-[FinderPlusCoreTests.RequestInboxTests testExpiredRequestsAreDropped]' passed (0.002 seconds).
+Test Case '-[FinderPlusCoreTests.RequestInboxTests testSubmitAndTakeOnce]' started.
+Test Case '-[FinderPlusCoreTests.RequestInboxTests testSubmitAndTakeOnce]' passed (0.001 seconds).
+Test Case '-[FinderPlusCoreTests.RequestInboxTests testURLRoutes]' started.
+Test Case '-[FinderPlusCoreTests.RequestInboxTests testURLRoutes]' passed (0.000 seconds).
+Test Suite 'RequestInboxTests' passed at 2026-10-26 10:46:59.148.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.004 (0.004) seconds
+Test Suite 'ScriptPackageTests' started at 2026-10-26 10:46:59.148.
+Test Case '-[FinderPlusCoreTests.ScriptPackageTests testArgumentExpansionKeepsPathsSeparate]' started.
+Test Case '-[FinderPlusCoreTests.ScriptPackageTests testArgumentExpansionKeepsPathsSeparate]' passed (0.003 seconds).
+Test Case '-[FinderPlusCoreTests.ScriptPackageTests testHashChangesWhenAnyFileChanges]' started.
+Test Case '-[FinderPlusCoreTests.ScriptPackageTests testHashChangesWhenAnyFileChanges]' passed (0.002 seconds).
+Test Case '-[FinderPlusCoreTests.ScriptPackageTests testLoadsAndCannotEscalate]' started.
+Test Case '-[FinderPlusCoreTests.ScriptPackageTests testLoadsAndCannotEscalate]' passed (0.001 seconds).
+Test Case '-[FinderPlusCoreTests.ScriptPackageTests testRejectsScriptsOutsideThePackage]' started.
+Test Case '-[FinderPlusCoreTests.ScriptPackageTests testRejectsScriptsOutsideThePackage]' passed (0.001 seconds).
+Test Case '-[FinderPlusCoreTests.ScriptPackageTests testUntrustedPackageIsExcludedFromMenu]' started.
+Test Case '-[FinderPlusCoreTests.ScriptPackageTests testUntrustedPackageIsExcludedFromMenu]' passed (0.001 seconds).
+Test Suite 'ScriptPackageTests' passed at 2026-10-26 10:46:59.157.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.008 (0.008) seconds
+Test Suite 'ScriptRunPlannerTests' started at 2026-10-26 10:46:59.157.
+Test Case '-[FinderPlusModuleTests.ScriptRunPlannerTests testCondaAndArgumentsAndExitBehavior]' started.
+Test Case '-[FinderPlusModuleTests.ScriptRunPlannerTests testCondaAndArgumentsAndExitBehavior]' passed (0.005 seconds).
+Test Case '-[FinderPlusModuleTests.ScriptRunPlannerTests testRscript]' started.
+Test Case '-[FinderPlusModuleTests.ScriptRunPlannerTests testRscript]' passed (0.000 seconds).
+Test Case '-[FinderPlusModuleTests.ScriptRunPlannerTests testUsesProjectVirtualEnvironment]' started.
+Test Case '-[FinderPlusModuleTests.ScriptRunPlannerTests testUsesProjectVirtualEnvironment]' passed (0.000 seconds).
+Test Suite 'ScriptRunPlannerTests' passed at 2026-10-26 10:46:59.163.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.006 (0.006) seconds
+Test Suite 'SettingValueTests' started at 2026-10-26 10:46:59.163.
+Test Case '-[FinderPlusCoreTests.SettingValueTests testJSONRoundTrip]' started.
+Test Case '-[FinderPlusCoreTests.SettingValueTests testJSONRoundTrip]' passed (0.001 seconds).
+Test Case '-[FinderPlusCoreTests.SettingValueTests testModuleSettingsFallsBackToDefaults]' started.
+Test Case '-[FinderPlusCoreTests.SettingValueTests testModuleSettingsFallsBackToDefaults]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.SettingValueTests testSchemaDecodesHandWrittenJSON]' started.
+Test Case '-[FinderPlusCoreTests.SettingValueTests testSchemaDecodesHandWrittenJSON]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.SettingValueTests testTypedDecoding]' started.
+Test Case '-[FinderPlusCoreTests.SettingValueTests testTypedDecoding]' passed (0.000 seconds).
+Test Suite 'SettingValueTests' passed at 2026-10-26 10:46:59.164.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'ShellQuotingTests' started at 2026-10-26 10:46:59.164.
+Test Case '-[FinderPlusCoreTests.ShellQuotingTests testAppleScriptLiteral]' started.
+Test Case '-[FinderPlusCoreTests.ShellQuotingTests testAppleScriptLiteral]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.ShellQuotingTests testBackslashAndDoubleQuote]' started.
+Test Case '-[FinderPlusCoreTests.ShellQuotingTests testBackslashAndDoubleQuote]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.ShellQuotingTests testQuote]' started.
+Test Case '-[FinderPlusCoreTests.ShellQuotingTests testQuote]' passed (0.000 seconds).
+Test Case '-[FinderPlusCoreTests.ShellQuotingTests testShellWords]' started.
+Test Case '-[FinderPlusCoreTests.ShellQuotingTests testShellWords]' passed (0.000 seconds).
+Test Suite 'ShellQuotingTests' passed at 2026-10-26 10:46:59.165.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'SidebarBackendTests' started at 2026-10-26 10:46:59.165.
+Test Case '-[FinderPlusModuleTests.SidebarBackendTests testAddIconAndRemoveFavorite]' started.
+Test Case '-[FinderPlusModuleTests.SidebarBackendTests testAddIconAndRemoveFavorite]' passed (1.049 seconds).
+Test Case '-[FinderPlusModuleTests.SidebarBackendTests testDisabledModulesRunNoDependencyChecks]' started.
+Test Case '-[FinderPlusModuleTests.SidebarBackendTests testDisabledModulesRunNoDependencyChecks]' passed (0.000 seconds).
+Test Case '-[FinderPlusModuleTests.SidebarBackendTests testHelperBundleRegistersIconCodes]' started.
+Test Case '-[FinderPlusModuleTests.SidebarBackendTests testHelperBundleRegistersIconCodes]' passed (0.325 seconds).
+Test Case '-[FinderPlusModuleTests.SidebarBackendTests testIconCodes]' started.
+Test Case '-[FinderPlusModuleTests.SidebarBackendTests testIconCodes]' passed (0.001 seconds).
+Test Case '-[FinderPlusModuleTests.SidebarBackendTests testReadingFavoritesDoesNotCrash]' started.
+Test Case '-[FinderPlusModuleTests.SidebarBackendTests testReadingFavoritesDoesNotCrash]' passed (0.014 seconds).
+Test Case '-[FinderPlusModuleTests.SidebarBackendTests testStaleFavoritesCanBeDeletedAndAreNotReAdded]' started.
+Test Case '-[FinderPlusModuleTests.SidebarBackendTests testStaleFavoritesCanBeDeletedAndAreNotReAdded]' passed (0.824 seconds).
+Test Suite 'SidebarBackendTests' passed at 2026-10-26 10:47:01.379.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 2.214 (2.214) seconds
+Test Suite 'TaskStoreTests' started at 2026-10-26 10:47:01.379.
+Test Case '-[FinderPlusCoreTests.TaskStoreTests testHistoryStaysBoundedForLongSessions]' started.
+Test Case '-[FinderPlusCoreTests.TaskStoreTests testHistoryStaysBoundedForLongSessions]' passed (0.065 seconds).
+Test Suite 'TaskStoreTests' passed at 2026-10-26 10:47:01.444.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.065 (0.065) seconds
+Test Suite 'FinderPlusKitPackageTests.xctest' passed at 2026-10-26 10:47:01.444.
+	 Executed 77 tests, with 0 failures (0 unexpected) in 14.674 (14.679) seconds
+Test Suite 'All tests' passed at 2026-10-26 10:47:01.444.
+	 Executed 77 tests, with 0 failures (0 unexpected) in 14.674 (14.681) seconds
+◇ Test run started.
+↳ Testing Library Version: 124.4
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests passed after 0.001 seconds.
